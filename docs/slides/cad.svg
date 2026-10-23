@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<rect width="800" height="600" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#2563eb"/></marker></defs>
+<rect x="124" y="190" width="552.0" height="276.0" rx="23.0" fill="#eef2f7" stroke="#1f2937" stroke-width="3.5"/>
+<circle cx="193.0" cy="328.0" r="18.4" fill="#ffffff" stroke="#1f2937" stroke-width="3.5"/>
+<line x1="160.6" y1="328.0" x2="225.4" y2="328.0" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="18 5 3 5"/>
+<line x1="193.0" y1="295.6" x2="193.0" y2="360.4" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="18 5 3 5"/>
+<circle cx="607.0" cy="328.0" r="18.4" fill="#ffffff" stroke="#1f2937" stroke-width="3.5"/>
+<line x1="574.6" y1="328.0" x2="639.4" y2="328.0" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="18 5 3 5"/>
+<line x1="607.0" y1="295.6" x2="607.0" y2="360.4" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="18 5 3 5"/>
+<line x1="124" y1="474.0" x2="124" y2="536.0" stroke="#2563eb" stroke-width="1.2"/>
+<line x1="676.0" y1="474.0" x2="676.0" y2="536.0" stroke="#2563eb" stroke-width="1.2"/>
+<line x1="124" y1="526.0" x2="676.0" y2="526.0" stroke="#2563eb" stroke-width="2" marker-start="url(#a)" marker-end="url(#a)"/><text x="400.0" y="516.0" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="normal" fill="#2563eb" text-anchor="middle"><tspan x="400.0" dy="0">120</tspan></text>
+<line x1="193.0" y1="291.6" x2="193.0" y2="125" stroke="#2563eb" stroke-width="1.2"/>
+<line x1="607.0" y1="291.6" x2="607.0" y2="125" stroke="#2563eb" stroke-width="1.2"/>
+<line x1="193.0" y1="135" x2="607.0" y2="135" stroke="#2563eb" stroke-width="2" marker-start="url(#a)" marker-end="url(#a)"/><text x="400.0" y="125" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="normal" fill="#2563eb" text-anchor="middle"><tspan x="400.0" dy="0">90</tspan></text>
+<line x1="684.0" y1="190" x2="746.0" y2="190" stroke="#2563eb" stroke-width="1.2"/>
+<line x1="684.0" y1="466.0" x2="746.0" y2="466.0" stroke="#2563eb" stroke-width="1.2"/>
+<line x1="736.0" y1="190" x2="736.0" y2="466.0" stroke="#2563eb" stroke-width="2" marker-start="url(#a)" marker-end="url(#a)"/><g transform="rotate(-90 724.0 328.0)"><text x="724.0" y="328.0" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="normal" fill="#2563eb" text-anchor="middle"><tspan x="724.0" dy="0">60</tspan></text></g>
+<line x1="288.0" y1="423.0" x2="206.01076477383248" y2="341.0107647738325" stroke="#2563eb" stroke-width="2" marker-end="url(#a)"/>
+<line x1="288.0" y1="423.0" x2="368.0" y2="423.0" stroke="#2563eb" stroke-width="2"/>
+<text x="293.0" y="415.0" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="normal" fill="#2563eb" text-anchor="start"><tspan x="293.0" dy="0">2× Ø 8 H7</tspan></text>
+<text x="400.0" y="560" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="normal" fill="#6b7280" text-anchor="middle"><tspan x="400.0" dy="0">Plate 120 × 60 × 10 mm, all dimensions in mm</tspan></text>
+</svg>

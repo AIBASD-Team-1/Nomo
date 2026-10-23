@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<rect width="800" height="600" fill="#ffffff"/>
+<polygon points="420.0,150.0 420.0,430.0 399.9,456.0" fill="#425972" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 399.9,456.0 399.9,176.0" fill="#425972" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="399.9,176.0 399.9,456.0 345.0,475.0" fill="#526e8d" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="399.9,176.0 345.0,475.0 345.0,195.0" fill="#526e8d" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="345.0,195.0 345.0,475.0 270.0,482.0" fill="#77a0ce" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="345.0,195.0 270.0,482.0 270.0,202.0" fill="#77a0ce" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="270.0,202.0 270.0,482.0 195.0,475.0" fill="#8ebff5" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="270.0,202.0 195.0,475.0 195.0,195.0" fill="#8ebff5" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="195.0,195.0 195.0,475.0 140.1,456.0" fill="#91c2fa" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="195.0,195.0 140.1,456.0 140.1,176.0" fill="#91c2fa" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="140.1,176.0 140.1,456.0 120.0,430.0" fill="#7ea9da" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="140.1,176.0 120.0,430.0 120.0,150.0" fill="#7ea9da" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 399.9,176.0 345.0,195.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 345.0,195.0 270.0,202.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 270.0,202.0 195.0,195.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 195.0,195.0 140.1,176.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 140.1,176.0 120.0,150.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 120.0,150.0 140.1,124.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 140.1,124.0 195.0,105.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 195.0,105.0 270.0,98.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 270.0,98.0 345.0,105.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="420.0,150.0 345.0,105.0 399.9,124.0" fill="#93c5fd" stroke="#1f2937" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="420.0" cy="150.0" r="5" fill="#dc2626"/>
+<circle cx="399.9" cy="176.0" r="5" fill="#dc2626"/>
+<circle cx="345.0" cy="195.0" r="5" fill="#dc2626"/>
+<circle cx="270.0" cy="202.0" r="5" fill="#dc2626"/>
+<circle cx="195.0" cy="195.0" r="5" fill="#dc2626"/>
+<circle cx="140.1" cy="176.0" r="5" fill="#dc2626"/>
+<circle cx="120.0" cy="150.0" r="5" fill="#dc2626"/>
+<circle cx="140.1" cy="124.0" r="5" fill="#dc2626"/>
+<circle cx="195.0" cy="105.0" r="5" fill="#dc2626"/>
+<circle cx="270.0" cy="98.0" r="5" fill="#dc2626"/>
+<circle cx="345.0" cy="105.0" r="5" fill="#dc2626"/>
+<circle cx="399.9" cy="124.0" r="5" fill="#dc2626"/>
+<circle cx="420.0" cy="430.0" r="5" fill="#dc2626"/>
+<circle cx="399.9" cy="456.0" r="5" fill="#dc2626"/>
+<circle cx="345.0" cy="475.0" r="5" fill="#dc2626"/>
+<circle cx="270.0" cy="482.0" r="5" fill="#dc2626"/>
+<circle cx="195.0" cy="475.0" r="5" fill="#dc2626"/>
+<circle cx="140.1" cy="456.0" r="5" fill="#dc2626"/>
+<circle cx="120.0" cy="430.0" r="5" fill="#dc2626"/>
+<line x1="470" y1="105" x2="403.9038105676658" y2="172.0" stroke="#6b7280" stroke-width="2"/><circle cx="403.9038105676658" cy="172.0" r="5" fill="#6b7280"/>
+<text x="480" y="95" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#dc2626" text-anchor="start"><tspan x="480" dy="0">Vertices</tspan></text>
+<line x1="470" y1="285" x2="372.4519052838329" y2="330.0" stroke="#6b7280" stroke-width="2"/><circle cx="372.4519052838329" cy="330.0" r="5" fill="#6b7280"/>
+<text x="480" y="275" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#1f2937" text-anchor="start"><tspan x="480" dy="0">Triangles,</tspan><tspan x="480" dy="32.5">nothing else</tspan></text>
+<line x1="470" y1="430" x2="420.0" y2="350.0" stroke="#6b7280" stroke-width="2"/><circle cx="420.0" cy="350.0" r="5" fill="#6b7280"/>
+<text x="480" y="420" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#1f2937" text-anchor="start"><tspan x="480" dy="0">Curve is</tspan><tspan x="480" dy="32.5">a 12-gon</tspan></text>
+<text x="400.0" y="560" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="normal" fill="#6b7280" text-anchor="middle"><tspan x="400.0" dy="0">Cylinder as mesh: 44 triangles, 24 vertices</tspan></text>
+</svg>

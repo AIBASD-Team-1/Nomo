@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<rect width="800" height="600" fill="#ffffff"/>
+<defs><linearGradient id="side" x1="0" x2="1"><stop offset="0" stop-color="#7fb2ea"/><stop offset="0.3" stop-color="#cfe4fb"/><stop offset="0.75" stop-color="#8dbcf0"/><stop offset="1" stop-color="#4f8bd0"/></linearGradient></defs>
+<path d="M 120 150 L 120 430 A 150 52 0 0 0 420 430 L 420 150 A 150 52 0 0 1 120 150 Z" fill="url(#side)"/>
+<ellipse cx="270" cy="150" rx="150" ry="52" fill="#e0efff"/>
+<line x1="120" y1="150" x2="120" y2="430" stroke="#6b7280" stroke-width="1.5"/>
+<line x1="420" y1="150" x2="420" y2="430" stroke="#6b7280" stroke-width="1.5"/>
+<ellipse cx="270" cy="150" rx="150" ry="52" fill="none" stroke="#dc2626" stroke-width="4"/>
+<path d="M 120 430 A 150 52 0 0 0 420 430" fill="none" stroke="#dc2626" stroke-width="4"/>
+<path d="M 120 430 A 150 52 0 0 1 420 430" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="8 8" opacity="0.6"/>
+<line x1="470" y1="95" x2="300" y2="145" stroke="#6b7280" stroke-width="2"/><circle cx="300" cy="145" r="5" fill="#6b7280"/>
+<text x="480" y="85" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#1f2937" text-anchor="start"><tspan x="480" dy="0">Face: plane</tspan></text>
+<line x1="470" y1="185" x2="392.8728066433488" y2="179.82597469025438" stroke="#6b7280" stroke-width="2"/><circle cx="392.8728066433488" cy="179.82597469025438" r="5" fill="#6b7280"/>
+<text x="480" y="175" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#dc2626" text-anchor="start"><tspan x="480" dy="0">Edge: circle</tspan></text>
+<line x1="470" y1="300" x2="330" y2="300" stroke="#6b7280" stroke-width="2"/><circle cx="330" cy="300" r="5" fill="#6b7280"/>
+<text x="480" y="290" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#1f2937" text-anchor="start"><tspan x="480" dy="0">Face: cylinder</tspan><tspan x="480" dy="32.5">r = 40.000 mm</tspan></text>
+<line x1="470" y1="470" x2="356.0364654526569" y2="472.59590630302756" stroke="#6b7280" stroke-width="2"/><circle cx="356.0364654526569" cy="472.59590630302756" r="5" fill="#6b7280"/>
+<text x="480" y="460" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#dc2626" text-anchor="start"><tspan x="480" dy="0">Edge: circle</tspan></text>
+<text x="400.0" y="560" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="normal" fill="#6b7280" text-anchor="middle"><tspan x="400.0" dy="0">The same cylinder as B-Rep: 3 exact faces</tspan></text>
+</svg>
