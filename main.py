@@ -18,6 +18,8 @@ async def process_prompt(request: PromptRequest) -> Dict[str, Any]:
         "status": "ai_not_implemented",
         "message": "The AI does not exist yet.",
         "prompt": request.prompt,
+        "schema-version": "1.00",
+        "type": "response",
         "reply": "The AI does not exist yet. Got prompt: " + request.prompt,
         "result": None
     }
