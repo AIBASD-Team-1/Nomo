@@ -17,7 +17,7 @@ def get_provider(config: Dict[str, Any]) -> LLMProvider:
 
     if provider_name == "openrouter":
         return OpenRouterProvider(
-            model=provider_cfg.get("model", "meta-llama/llama-3.3-70b-instruct:free"),
+            model=provider_cfg.get("model", "google/gemma-4-31b-it:free"),
             api_key=provider_cfg.get("api_key", "OPENROUTER_API_KEY"),
             base_url=provider_cfg.get("base-url", "https://openrouter.ai/api/v1")
         )

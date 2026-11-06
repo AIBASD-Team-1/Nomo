@@ -11,23 +11,42 @@ class OpenRouterProvider(LLMProvider):
     Supports free models on OpenRouter (e.g. meta-llama/llama-3.3-70b-instruct:free).
     """
 
-    def __init__(self, model: str = "meta-llama/llama-3.3-70b-instruct:free", api_key: str = "", base_url: str = ""):
+    def __init__(self, model: str = "recursive/flint-v1.0:free", api_key: str = "", base_url: str = ""):
         self.model = model
-        # Resolve key from env var if variable name passed
-        resolved_key = os.getenv(api_key, api_key) if api_key else ""
-        if not resolved_key and "OPENROUTER_API_KEY" in os.environ:
-            resolved_key = os.environ["OPENROUTER_API_KEY"]
-        self.api_key = resolved_key
+        # Resolve key: check if api_key points to an env var, or is a raw key (sk-...), or fallback to OPENROUTER_API_KEY
+        resolved_key = ""
+        if api_key:
+            resolved_key = os.getenv(api_key, "")
+            if not resolved_key and api_key.startswith("sk-"):
+                resolved_key = api_key
+        if not resolved_key:
+            resolved_key = os.getenv("OPENROUTER_API_KEY", "")
+
+        clean_key = resolved_key.strip().strip('"').strip("'")
+        if clean_key.startswith("Bearer "):
+            clean_key = clean_key[7:].strip()
+        self.api_key = clean_key
         self.base_url = base_url.rstrip("/") if base_url else "https://openrouter.ai/api/v1"
 
     def call(self, system_prompt: str, user_prompt: str) -> str:
-        if self.model.upper() == "MOCK" or not self.api_key:
+        if self.model.upper() == "MOCK":
             return (
                 f"[OpenRouter Mock Response - model: {self.model}]\n"
-                f"Note: Set OPENROUTER_API_KEY to execute real calls.\n"
                 f"System Prompt: {system_prompt}\n"
                 f"User Prompt: {user_prompt}"
             )
+
+        if not self.api_key:
+            raise ValueError(
+                "OPENROUTER_API_KEY is not set!\n"
+                "Please run this in your terminal first:\n"
+                "  export OPENROUTER_API_KEY=\"sk-or-v1-...\"\n"
+                "Or insert your key directly in config.json under providers.openrouter.api_key."
+            )
+
+        # Print masked key info for debugging
+        masked = self.api_key[:11] + "..." + self.api_key[-4:] if len(self.api_key) > 15 else "***"
+        print(f"Using OpenRouter Key: {masked} (length: {len(self.api_key)})")
 
         endpoint = f"{self.base_url}/chat/completions" if not self.base_url.endswith("/chat/completions") else self.base_url
         headers = {
