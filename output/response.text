@@ -1,4 +1,4 @@
 [Mock LLM Response (MOCK)]
-System Prompt: DUMMY
+System Prompt: You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).
 Received Prompt: 'Test table 200 x 100 cm'
 Result: Design generated successfully based on your specifications.
