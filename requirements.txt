@@ -1,0 +1,5 @@
+fastapi
+github-copilot-sdk
+httpx
+pytest
+uvicorn

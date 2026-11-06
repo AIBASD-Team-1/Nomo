@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -8,7 +9,7 @@ def test_cli_execution_with_mock(tmp_path):
     mock_config.write_text(
         '{\n'
         '  "provider": "mock",\n'
-        '  "output-file": "output/response-mock.text",\n'
+        '  "output-file": "output/response.text",\n'
         '  "system-prompt": "DUMMY",\n'
         '  "providers": { "mock": { "model": "MOCK" } }\n'
         '}\n',
@@ -17,7 +18,7 @@ def test_cli_execution_with_mock(tmp_path):
 
     prompt = "Test table 200 x 100 cm"
     result = subprocess.run(
-        ["python3", "cli.py", prompt, "--config", str(mock_config)],
+        [sys.executable, "cli.py", prompt, "--config", str(mock_config)],
         capture_output=True,
         text=True,
         check=True
@@ -30,7 +31,7 @@ def test_cli_execution_with_mock(tmp_path):
     assert prompt in result.stdout
 
     # Check output file
-    output_file = Path("output/response-mock.text")
+    output_file = Path("output/response.text")
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
     assert prompt in content

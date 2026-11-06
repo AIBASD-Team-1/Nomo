@@ -1,4 +1,0 @@
-[Mock LLM Response (recursive/flint-v1.0:free)]
-System Prompt: You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).
-Received Prompt: 'Kitchen table 120x90cm for six people, four legs'
-Result: Design generated successfully based on your specifications.

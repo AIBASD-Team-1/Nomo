@@ -1,9 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
+import main
 
-from main import app
-
-client = TestClient(app)
+client = TestClient(main.app)
 
 EXPECTED_DOM_ELEMENT_IDS = [
     "chat-form",
@@ -41,7 +40,6 @@ def test_index_contains_all_frontend_contract_element_ids():
             f"Missing required element id: {element_id}"
         )
 
-
 @pytest.mark.parametrize(
     "path, expected_mime",
     [
@@ -55,12 +53,17 @@ def test_static_files_delivery(path: str, expected_mime: str):
     assert expected_mime in response.headers.get("content-type", "")
 
 
-def test_prompt_endpoint_returns_valid_json_contract():
+def test_prompt_endpoint_returns_valid_json_contract(monkeypatch):
     """
     Verifies that the prompt endpoint accepts a valid prompt and adheres to the
     response contract schema.
     """
     prompt_text = "Kitchen table 160 x 90 cm"
+    monkeypatch.setattr(
+        main,
+        "call_llm",
+        lambda system_prompt, user_prompt, config_path: "Mock reply",
+    )
     response = client.post("/api/prompt", json={"prompt": prompt_text})
 
     assert response.status_code == 200
@@ -68,12 +71,12 @@ def test_prompt_endpoint_returns_valid_json_contract():
 
     data = response.json()
     assert isinstance(data, dict)
-    assert data["status"] == "ai_not_implemented"
+    assert data["status"] == "ok"
     assert data["prompt"] == prompt_text
-    assert "The AI does not exist yet" in data["message"]
+    assert data["message"] == "Mock reply"
     assert data["schema-version"] == "1.00"
     assert data["type"] == "response"
-    assert "reply" in data
+    assert data["reply"] == "Mock reply"
     assert data["result"] is None
 
 

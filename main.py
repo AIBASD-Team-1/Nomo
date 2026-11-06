@@ -1,10 +1,12 @@
+import asyncio
+import json
 from pathlib import Path
 from typing import Any
-
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from llm import call_llm
 
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -22,7 +24,6 @@ app = FastAPI(title="Nomo CAD Web Interface")
 
 class PromptRequest(BaseModel):
     prompt: str
-
 
 class PromptResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -55,11 +56,24 @@ def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:
 
 @app.post("/api/prompt", response_model=PromptResponse, response_model_by_alias=True)
 async def process_prompt(request: PromptRequest) -> PromptResponse:
-    """
-    AI prompt endpoint: Currently returns a standardized placeholder response
-    while preserving the full CAD/JSON response contract.
-    """
-    return create_unimplemented_prompt_response(request.prompt)
+    config_path = BASE_DIR / "config.json"
+    with config_path.open("r", encoding="utf-8") as config_file:
+        config = json.load(config_file)
+    system_prompt = config.get("system-prompt") or config.get(
+        "system_prompt", "You are Nomo CAD assistant."
+    )
+    reply = await asyncio.to_thread(
+        call_llm, system_prompt, request.prompt, str(config_path)
+    )
+    return PromptResponse(
+        status="ok",
+        message=reply,
+        prompt=request.prompt,
+        schema_version=SCHEMA_VERSION,
+        type=RESPONSE_TYPE,
+        reply=reply,
+        result=None,
+    )
 
 
 # Serve static web assets (HTML, CSS, JS)
