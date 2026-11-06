@@ -3,6 +3,7 @@ import os
 from typing import Optional, Dict, Any
 from .base import LLMProvider
 from .claude import ClaudeProvider
+from .openrouter import OpenRouterProvider
 from .mock import MockProvider
 
 
@@ -14,7 +15,13 @@ def get_provider(config: Dict[str, Any]) -> LLMProvider:
     providers_cfg = config.get("providers", {})
     provider_cfg = providers_cfg.get(provider_name, {})
 
-    if provider_name == "claude":
+    if provider_name == "openrouter":
+        return OpenRouterProvider(
+            model=provider_cfg.get("model", "meta-llama/llama-3.3-70b-instruct:free"),
+            api_key=provider_cfg.get("api_key", "OPENROUTER_API_KEY"),
+            base_url=provider_cfg.get("base-url", "https://openrouter.ai/api/v1")
+        )
+    elif provider_name == "claude":
         return ClaudeProvider(
             model=provider_cfg.get("model", "MOCK"),
             api_key=provider_cfg.get("api_key", ""),
@@ -28,15 +35,6 @@ def get_provider(config: Dict[str, Any]) -> LLMProvider:
 def call_llm(system_prompt: str, user_prompt: str, config_path: str = "config.json", provider: Optional[LLMProvider] = None) -> str:
     """
     Execute LLM call passing system prompt and user prompt.
-
-    Args:
-        system_prompt: The system prompt specifying instructions/persona.
-        user_prompt: The user design description prompt.
-        config_path: Path to configuration file.
-        provider: Optional explicit LLMProvider instance.
-
-    Returns:
-        The response text received from the LLM.
     """
     if provider is None:
         if os.path.exists(config_path):

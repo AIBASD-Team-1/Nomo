@@ -1,20 +1,25 @@
 {
   "provider": "mock",
   "output-file": "output/response.text",
-  "system-prompt": "DUMMY",
+  "system-prompt": "You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).",
   "providers": {
     "mock": {
       "model": "MOCK"
     },
+    "openrouter": {
+      "model": "meta-llama/llama-3.3-70b-instruct:free",
+      "api_key": "OPENROUTER_API_KEY",
+      "base-url": "https://openrouter.ai/api/v1"
+    },
     "claude": {
       "model": "MOCK",
       "api_key": "CLAUDE_TOKEN",
-      "base-url": "claude.io"
+      "base-url": "https://api.anthropic.com/v1"
     },
     "copilot": {
-      "model": "MOCK",
+      "model": "gpt-4o",
       "api_key": "GITHUB_TOKEN",
-      "base-url": "github.com"
+      "base-url": "https://models.inference.ai.azure.com"
     }
   }
 }
