@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nomo - CAD Prompt Web App</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo-group">
+            <span class="logo-title">Nomo</span>
+            <span class="logo-badge">CAD AI</span>
+        </div>
+        <div class="header-subtitle">Enter prompts in the chat window and see the result as JSON</div>
+    </header>
+
+    <main class="app-layout">
+        <!-- Chat Window -->
+        <section class="panel chat-window" id="chat-window">
+            <div class="panel-header">
+                <h2>Chat Window</h2>
+                <span class="badge">Chat</span>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="message assistant-message">
+                    <div class="message-sender">Nomo AI</div>
+                    <div class="message-content">
+                        Hello! Enter your prompt below to see the result as JSON.
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-prompts">
+                <span class="quick-label">Try:</span>
+                <button type="button" class="chip" data-prompt="Kitchen table 160 x 90 cm for six people, four legs">Kitchen table 160 × 90 cm</button>
+                <button type="button" class="chip" data-prompt="Box 100 x 100 x 100 mm">Box 100 mm</button>
+            </div>
+
+            <form class="chat-input-form" id="chat-form">
+                <textarea 
+                    id="prompt-input" 
+                    placeholder="Enter your prompt here..." 
+                    rows="2"
+                    required></textarea>
+                <button type="submit" id="send-btn" class="primary-btn">
+                    <span>Send</span>
+                    <svg class="send-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </form>
+        </section>
+
+        <!-- Output Panel -->
+        <section class="panel output-panel" id="output-panel">
+            <div class="panel-header">
+                <h2>Output Panel</h2>
+                <div class="tab-controls">
+                    <button type="button" class="tab-btn active" id="tab-table">JSON Table</button>
+                    <button type="button" class="tab-btn" id="tab-raw">Raw JSON</button>
+                </div>
+            </div>
+
+            <div class="output-content">
+                <!-- JSON Table View -->
+                <div id="json-table-view" class="view-section active">
+                    <div id="table-placeholder" class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <p>No response yet. Submit a prompt in the chat window to view the result as a JSON table.</p>
+                    </div>
+                    <div id="table-results" class="table-container hidden">
+                        <div class="table-section">
+                            <h3 class="section-title">Response JSON Table</h3>
+                            <div class="table-wrapper">
+                                <table id="json-table" class="json-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="json-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raw JSON View -->
+                <div id="json-raw-view" class="view-section hidden">
+                    <div class="raw-actions">
+                        <span id="json-status-indicator" class="status-indicator">Ready</span>
+                        <button type="button" id="copy-json-btn" class="secondary-btn">Copy JSON</button>
+                    </div>
+                    <pre><code id="json-raw-code">// Response JSON will appear here</code></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
