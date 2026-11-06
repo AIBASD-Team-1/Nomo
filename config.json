@@ -1,14 +1,17 @@
 {
-  "provider": "claude",
+  "provider": "mock",
   "output-file": "output/response.text",
   "system-prompt": "DUMMY",
   "providers": {
-    "claude" : {
+    "mock": {
+      "model": "MOCK"
+    },
+    "claude": {
       "model": "MOCK",
       "api_key": "CLAUDE_TOKEN",
       "base-url": "claude.io"
     },
-    "copilot" : {
+    "copilot": {
       "model": "MOCK",
       "api_key": "GITHUB_TOKEN",
       "base-url": "github.com"
