@@ -118,3 +118,15 @@ uv run --locked pytest
 
 Review and commit the resulting lockfile changes. Normal installation uses
 `--locked` so an outdated lockfile causes an error rather than an implicit update.
+## GitHub Copilot
+
+Install the project dependencies and download the SDK runtime:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m copilot download-runtime
+```
+
+The active provider is selected in `config.json`. For Copilot, keep `provider` set to `copilot`; the SDK uses the credentials from your signed-in Copilot CLI and does not need an API key or base URL. Start `copilot` and complete the GitHub sign-in if prompted, then start the web app with `python main.py` or use the CLI with `python cli.py "Describe a design"`.
+
+The configured model is `gpt-4o`; change `providers.copilot.model` in `config.json` if your Copilot plan or organization uses a different available model.

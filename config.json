@@ -1,5 +1,5 @@
 {
-  "provider": "openrouter",
+  "provider": "copilot",
   "output-file": "output/response.text",
   "system-prompt": "You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).",
   "providers": {
@@ -18,9 +18,8 @@
       "base-url": "https://api.anthropic.com/v1"
     },
     "copilot": {
-      "model": "gpt-4o",
-      "api_key": "GITHUB_TOKEN",
-      "base-url": "https://models.inference.ai.azure.com"
+      "comment": "Setup: Aktiviere das Projekt-Venv, installiere mit `python -m pip install -r requirements.txt`, lade mit `python -m copilot download-runtime` die Runtime und melde dich mit `copilot` und `/login` bei GitHub an. Kein Token noetig.",
+      "model": "gpt-4o"
     }
   }
 }

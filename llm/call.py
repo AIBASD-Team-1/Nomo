@@ -5,6 +5,7 @@ from .base import LLMProvider
 from .claude import ClaudeProvider
 from .openrouter import OpenRouterProvider
 from .mock import MockProvider
+from .github_copilot import CopilotProvider
 
 
 def get_provider(config: Dict[str, Any]) -> LLMProvider:
@@ -27,6 +28,8 @@ def get_provider(config: Dict[str, Any]) -> LLMProvider:
             api_key=provider_cfg.get("api_key", ""),
             base_url=provider_cfg.get("base-url", "")
         )
+    elif provider_name == "copilot":
+        return CopilotProvider(model=provider_cfg.get("model", "auto"))
     else:
         model_name = provider_cfg.get("model", "mock-default")
         return MockProvider(model_name=model_name)
