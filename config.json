@@ -8,7 +8,7 @@
     },
     "openrouter": {
       "model": "recursive/flint-v1.0:free",
-      "api_key": "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", 
+      "api_key": "OPENROUTER_API_KEY",
       "comment" : "Key expires Feb 4 27. Only use free models!!!!",
       "base-url": "https://openrouter.ai/api/v1"
     },
