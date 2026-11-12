@@ -1,9 +1,10 @@
 import json
 import os
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+
 from llm.call import get_provider
 from llm.github_copilot import CopilotProvider
 
