@@ -5,5 +5,8 @@
 !uv.lock
 !.python-version
 !main.py
+!config.json
+!llm/
+!llm/**
 !static/
 !static/**
