@@ -1,36 +1,76 @@
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Optional
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+# Base paths
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+INDEX_HTML_PATH = STATIC_DIR / "index.html"
+
+# Response contract defaults
+SCHEMA_VERSION = "1.00"
+STATUS_AI_NOT_IMPLEMENTED = "ai_not_implemented"
+RESPONSE_TYPE = "response"
+DEFAULT_UNIMPLEMENTED_MESSAGE = "The AI does not exist yet."
 
 app = FastAPI(title="Nomo CAD Web Interface")
+
 
 class PromptRequest(BaseModel):
     prompt: str
 
-@app.post("/api/prompt")
-async def process_prompt(request: PromptRequest) -> Dict[str, Any]:
-    """
-    Dummy AI endpoint: Returns a JSON response indicating that the AI does not exist yet.
-    """
-    return {
-        "status": "ai_not_implemented",
-        "message": "The AI does not exist yet.",
-        "prompt": request.prompt,
-        "schema-version": "1.00",
-        "type": "response",
-        "reply": "The AI does not exist yet. Got prompt: " + request.prompt,
-        "result": None
-    }
 
-# Serve static web files (HTML, CSS, JS)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+class PromptResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    status: str
+    message: str
+    prompt: str
+    schema_version: str = Field(
+        default=SCHEMA_VERSION,
+        serialization_alias="schema-version",
+        validation_alias=AliasChoices("schema-version", "schema_version"),
+    )
+    type: str
+    reply: str
+    result: Optional[Any] = None
+
+
+def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:
+    """Builds the placeholder response contract for an unconfigured/unimplemented AI."""
+    return PromptResponse(
+        status=STATUS_AI_NOT_IMPLEMENTED,
+        message=DEFAULT_UNIMPLEMENTED_MESSAGE,
+        prompt=prompt,
+        schema_version=SCHEMA_VERSION,
+        type=RESPONSE_TYPE,
+        reply=f"{DEFAULT_UNIMPLEMENTED_MESSAGE} Got prompt: {prompt}",
+        result=None,
+    )
+
+
+@app.post("/api/prompt", response_model=PromptResponse, response_model_by_alias=True)
+async def process_prompt(request: PromptRequest) -> PromptResponse:
+    """
+    AI prompt endpoint: Currently returns a standardized placeholder response
+    while preserving the full CAD/JSON response contract.
+    """
+    return create_unimplemented_prompt_response(request.prompt)
+
+
+# Serve static web assets (HTML, CSS, JS)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 
 @app.get("/")
 async def get_index():
-    return FileResponse("static/index.html")
+    return FileResponse(INDEX_HTML_PATH)
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
