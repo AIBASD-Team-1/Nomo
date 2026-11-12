@@ -5,6 +5,7 @@ description = "Nomo CAD prompt web application"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115,<1",
+    "github-copilot-sdk",
     "pydantic>=2.9,<3",
     "uvicorn>=0.30,<1",
 ]
