@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from main import app
 
 client = TestClient(app)
@@ -36,7 +37,9 @@ def test_index_contains_all_frontend_contract_element_ids():
     assert response.status_code == 200
     html = response.text
     for element_id in EXPECTED_DOM_ELEMENT_IDS:
-        assert f'id="{element_id}"' in html, f"Missing required element id: {element_id}"
+        assert f'id="{element_id}"' in html, (
+            f"Missing required element id: {element_id}"
+        )
 
 
 @pytest.mark.parametrize(

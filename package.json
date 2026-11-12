@@ -1,0 +1,11 @@
+{
+    "name": "nomo",
+    "private": true,
+    "scripts": {
+        "format:check": "prettier --check static",
+        "format": "prettier --write static"
+    },
+    "devDependencies": {
+        "prettier": "3.10.1"
+    }
+}

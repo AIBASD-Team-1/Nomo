@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,7 +37,7 @@ class PromptResponse(BaseModel):
     )
     type: str
     reply: str
-    result: Optional[Any] = None
+    result: Any | None = None
 
 
 def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:

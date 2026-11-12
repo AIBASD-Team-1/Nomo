@@ -99,10 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
             renderJsonTable(data);
         } catch (error) {
             console.error("Error submitting prompt:", error);
-            appendMessage(
-                "assistant",
-                `Error: Could not connect to server. (${error.message})`
-            );
+            appendMessage("assistant", `Error: Could not connect to server. (${error.message})`);
         } finally {
             setLoading(false);
         }
