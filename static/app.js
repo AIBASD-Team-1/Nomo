@@ -5,13 +5,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const promptInput = document.getElementById("prompt-input");
     const sendBtn = document.getElementById("send-btn");
     const chatMessages = document.getElementById("chat-messages");
-    
+
     // Output panel tabs and views
     const tabTable = document.getElementById("tab-table");
     const tabRaw = document.getElementById("tab-raw");
     const tableView = document.getElementById("json-table-view");
     const rawView = document.getElementById("json-raw-view");
-    
+
     // Output content elements
     const tablePlaceholder = document.getElementById("table-placeholder");
     const tableResults = document.getElementById("table-results");
@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Quick prompt chips
-    document.querySelectorAll(".chip").forEach(chip => {
+    document.querySelectorAll(".chip").forEach((chip) => {
         chip.addEventListener("click", () => {
             const prompt = chip.getAttribute("data-prompt");
             if (prompt) {
@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch("/api/prompt", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: promptText })
+                body: JSON.stringify({ prompt: promptText }),
             });
 
             if (!response.ok) {
@@ -101,7 +101,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 4. Render response as JSON Table in the Output Panel
             renderJsonTable(data);
-
         } catch (error) {
             console.error("Error submitting prompt:", error);
             appendMessage("assistant", `Error: Could not connect to server. (${error.message})`);
@@ -153,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
         jsonTableBody.innerHTML = "";
 
         // Populate table with keys, types, and values from the JSON response
-        Object.keys(data).forEach(key => {
+        Object.keys(data).forEach((key) => {
             const val = data[key];
             const type = val === null ? "null" : Array.isArray(val) ? "array" : typeof val;
             let displayVal = "";

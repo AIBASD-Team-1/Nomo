@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build application image
+        run: docker build --tag nomo:ci .
+
+      - name: Start application container
+        run: docker run --detach --name nomo-ci --publish 127.0.0.1:8000:8000 nomo:ci
+
+      - name: Verify application startup
+        run: |
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 \
+            --retry-all-errors --retry-max-time 60 --max-time 3 \
+            http://127.0.0.1:8000/ --output /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/static/style.css --output /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/static/app.js --output /dev/null
+
+      - name: Show container logs and clean up
+        if: always()
+        run: |
+          if docker container inspect nomo-ci > /dev/null 2>&1; then
+            docker logs nomo-ci
+            docker rm --force nomo-ci
+          fi
+
+  static-analysis:
+    name: Static analysis
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.7"
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      - name: Check Python lint
+        run: uv run --locked ruff check .
+
+      - name: Check Python formatting
+        run: uv run --locked ruff format --check .
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install frontend quality tools
+        run: npm ci
+
+      - name: Check HTML, CSS and JavaScript formatting
+        run: npm run format:check
+
+  test:
+    name: Tests
+    needs: static-analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.7"
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      - name: Run tests
+        run: uv run --locked pytest --junitxml=test-results.xml
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+          if-no-files-found: error
