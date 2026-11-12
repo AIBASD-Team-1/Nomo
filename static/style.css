@@ -480,3 +480,13 @@ body {
     line-height: 1.5;
     max-height: 600px;
 }
+
+.table-code-block {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+}
+
+.table-code-block.with-margin {
+    margin-top: 4px;
+}
