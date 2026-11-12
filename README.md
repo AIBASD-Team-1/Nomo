@@ -104,6 +104,10 @@ the **Build**, **Static analysis** and **Tests** checks as required status check
 in the target branch's protection rules or ruleset. This is a GitHub setting,
 not something the workflow file enables by itself.
 
+GitHub may require a paid plan to enable these protections for a private
+repository. Without required status checks, CI results remain visible but
+do not technically prevent merging failed changes.
+
 ## Update dependencies
 
 ```powershell
