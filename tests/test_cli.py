@@ -7,13 +7,13 @@ def test_cli_execution_with_mock(tmp_path):
     # Create temporary mock config
     mock_config = tmp_path / "mock_config.json"
     mock_config.write_text(
-        '{\n'
+        "{\n"
         '  "provider": "mock",\n'
         '  "output-file": "output/response.text",\n'
         '  "system-prompt": "DUMMY",\n'
         '  "providers": { "mock": { "model": "MOCK" } }\n'
-        '}\n',
-        encoding="utf-8"
+        "}\n",
+        encoding="utf-8",
     )
 
     prompt = "Test table 200 x 100 cm"
@@ -21,7 +21,7 @@ def test_cli_execution_with_mock(tmp_path):
         [sys.executable, "cli.py", prompt, "--config", str(mock_config)],
         capture_output=True,
         text=True,
-        check=True
+        check=True,
     )
 
     # Check CLI output

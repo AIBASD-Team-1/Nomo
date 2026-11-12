@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+
 import main
 
 client = TestClient(main.app)
@@ -39,6 +40,7 @@ def test_index_contains_all_frontend_contract_element_ids():
         assert f'id="{element_id}"' in html, (
             f"Missing required element id: {element_id}"
         )
+
 
 @pytest.mark.parametrize(
     "path, expected_mime",

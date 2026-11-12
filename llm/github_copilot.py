@@ -1,6 +1,7 @@
 import asyncio
 
 from copilot import CopilotClient
+
 from .base import LLMProvider
 
 

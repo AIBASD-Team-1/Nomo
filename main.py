@@ -2,10 +2,12 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Any
+
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
 from llm import call_llm
 
 # Base paths
@@ -24,6 +26,7 @@ app = FastAPI(title="Nomo CAD Web Interface")
 
 class PromptRequest(BaseModel):
     prompt: str
+
 
 class PromptResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)

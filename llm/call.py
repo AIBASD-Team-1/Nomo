@@ -1,14 +1,15 @@
 import json
 import os
-from typing import Optional, Dict, Any
+from typing import Any
+
 from .base import LLMProvider
 from .claude import ClaudeProvider
-from .openrouter import OpenRouterProvider
-from .mock import MockProvider
 from .github_copilot import CopilotProvider
+from .mock import MockProvider
+from .openrouter import OpenRouterProvider
 
 
-def get_provider(config: Dict[str, Any]) -> LLMProvider:
+def get_provider(config: dict[str, Any]) -> LLMProvider:
     """
     Factory function to instantiate the selected LLM provider based on config.
     """
@@ -20,13 +21,13 @@ def get_provider(config: Dict[str, Any]) -> LLMProvider:
         return OpenRouterProvider(
             model=provider_cfg.get("model", "google/gemma-4-31b-it:free"),
             api_key=provider_cfg.get("api_key", "OPENROUTER_API_KEY"),
-            base_url=provider_cfg.get("base-url", "https://openrouter.ai/api/v1")
+            base_url=provider_cfg.get("base-url", "https://openrouter.ai/api/v1"),
         )
     elif provider_name == "claude":
         return ClaudeProvider(
             model=provider_cfg.get("model", "MOCK"),
             api_key=provider_cfg.get("api_key", ""),
-            base_url=provider_cfg.get("base-url", "")
+            base_url=provider_cfg.get("base-url", ""),
         )
     elif provider_name == "copilot":
         return CopilotProvider(model=provider_cfg.get("model", "auto"))
@@ -35,13 +36,18 @@ def get_provider(config: Dict[str, Any]) -> LLMProvider:
         return MockProvider(model_name=model_name)
 
 
-def call_llm(system_prompt: str, user_prompt: str, config_path: str = "config.json", provider: Optional[LLMProvider] = None) -> str:
+def call_llm(
+    system_prompt: str,
+    user_prompt: str,
+    config_path: str = "config.json",
+    provider: LLMProvider | None = None,
+) -> str:
     """
     Execute LLM call passing system prompt and user prompt.
     """
     if provider is None:
         if os.path.exists(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 config = json.load(f)
         else:
             config = {"provider": "mock"}
