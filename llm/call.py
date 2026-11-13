@@ -1,6 +1,9 @@
 import json
 import os
+from pathlib import Path
 from typing import Any
+
+from dotenv import load_dotenv
 
 from .base import LLMProvider
 from .claude import ClaudeProvider
@@ -45,6 +48,8 @@ def call_llm(
     """
     Execute LLM call passing system prompt and user prompt.
     """
+    load_dotenv(Path(config_path).resolve().parent / ".env")
+
     if provider is None:
         if os.path.exists(config_path):
             with open(config_path, encoding="utf-8") as f:

@@ -125,17 +125,26 @@ Review and commit the resulting lockfile changes. Normal installation uses
 2. Open [API Keys](https://openrouter.ai/settings/keys), create a key and copy it.
 3. In `config.json`, set `provider` to `openrouter` and choose an available
    free model. Leave `providers.openrouter.api_key` empty or omit it;
-   the provider reads the key from `OPENROUTER_API_KEY` automatically.
-4. Set the key in PowerShell and start the application from the same terminal:
+   the provider reads the key from `OPENROUTER_API_KEY`.
+4. From the repository root, create your local environment file in PowerShell:
 
    ```powershell
-   $env:OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY"
+   Copy-Item .env.example .env
+   notepad .env
+   ```
+
+   Replace the example value with your key and save the file. The application
+   and CLI load `.env` automatically from the same directory as `config.json`.
+   The `.env` file is ignored by Git; do not commit or share it.
+5. Start the application:
+
+   ```powershell
    uv run --locked uvicorn main:app --host 127.0.0.1 --port 8000 --reload
    ```
 
-The environment variable applies only to this terminal session and programs
-started from it. Set it again when opening a new terminal. Never commit the
-actual key or include it in issues or documentation.
+An `OPENROUTER_API_KEY` already set in the terminal takes precedence over the
+value in `.env`. Never commit the actual key or include it in issues or
+documentation.
 
 ## GitHub Copilot
 
