@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 
+from catalog import build_system_prompt
 from llm import call_llm
 
 
@@ -65,7 +66,9 @@ def main():
     # 2. Implement LLM call (pass system prompt and user prompt)
     print("\nCalling LLM...")
     response_text = call_llm(
-        system_prompt=system_prompt, user_prompt=prompt, config_path=args.config
+        system_prompt=build_system_prompt(system_prompt),
+        user_prompt=prompt,
+        config_path=args.config,
     )
 
     # 3. User receives a text response from the LLM

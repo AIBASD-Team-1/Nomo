@@ -2,8 +2,8 @@
 
 Nomo is a university project: text prompt → 3D CAD model built only from parametric **templates**
 (the AI picks templates + parameters, never writes geometry). See `docs/Spec.md` for the target
-design (templates, instances, validation, build123d geometry, STEP export). Currently only the
-prompt → LLM → text reply loop exists; templates/validation/geometry are not implemented yet.
+design (templates, instances, validation, build123d geometry, STEP export). The AI now
+returns a model (list of instances) in `result`; validation and geometry are not implemented yet.
 
 ## Commands
 
@@ -22,11 +22,19 @@ npm ci && npm run format:check                     # Prettier for static/ (npm r
 CI (`.github/workflows/ci.yml`) runs Docker build + smoke test, ruff + Prettier, then pytest.
 All must pass. Run ruff format and Prettier before committing.
 
+## Code style
+
+Write readable Python: full descriptive names (no abbreviations like `cfg`, `s`, `e`), no
+one-liners that pack several steps (tuple assignments, nested calls, dense comprehensions) —
+use one named intermediate variable per step.
+
 ## Layout
 
 - `main.py` — FastAPI app. `POST /api/prompt` reads `config.json` per request, calls `call_llm`
   in a thread, returns `PromptResponse`. Serves `static/` and `/` → `static/index.html`.
-- `cli.py` — argparse CLI over the same `call_llm`.
+- `catalog.py` — template catalog (box, sphere, cylinder), the system prompt built from it, and
+  `parse_reply` which turns the AI's JSON answer into `reply` + `model` (→ `result`).
+- `cli.py` — argparse CLI over the same `call_llm` (prints the raw answer).
 - `llm/` — providers behind `LLMProvider.call(system_prompt, user_prompt) -> str`:
   `mock`, `openrouter`, `claude` (both raw `urllib`, no SDKs), `copilot` (github-copilot-sdk).
   `llm/call.py:get_provider` picks one from config; unknown names fall back to mock.
@@ -39,7 +47,8 @@ All must pass. Run ruff format and Prettier before committing.
 - Keys accept both `kebab-case` and `snake_case` (`system-prompt` / `system_prompt`) — keep both
   lookups when touching config reads.
 - `api_key` is an **env var name** (e.g. `OPENROUTER_API_KEY`), resolved via `os.getenv`.
-  Never commit real keys.
+  Keys live in `.env` next to `config.json` (git-ignored, loaded by `call_llm` via python-dotenv;
+  shell variables win). Copy `.env.example` to start. Never commit real keys.
 - `model: "MOCK"` on claude/openrouter returns a canned reply without a network call.
 - OpenRouter: free models only.
 - Copilot needs `python -m copilot download-runtime` and a signed-in `copilot` CLI; no key.

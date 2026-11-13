@@ -5,6 +5,7 @@
 !uv.lock
 !.python-version
 !main.py
+!catalog.py
 !config.json
 !llm/
 !llm/**
