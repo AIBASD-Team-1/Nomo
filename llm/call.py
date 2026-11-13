@@ -21,8 +21,15 @@ def get_provider(config: dict[str, Any]) -> LLMProvider:
     provider_cfg = providers_cfg.get(provider_name, {})
 
     if provider_name == "openrouter":
+        # OPENROUTER_MODEL from the environment or .env overrides the model in config.json
+        configured_model = provider_cfg.get("model", "google/gemma-4-31b-it:free")
+        environment_model = os.getenv("OPENROUTER_MODEL")
+        if environment_model:
+            model_name = environment_model
+        else:
+            model_name = configured_model
         return OpenRouterProvider(
-            model=provider_cfg.get("model", "google/gemma-4-31b-it:free"),
+            model=model_name,
             api_key=provider_cfg.get("api_key", "OPENROUTER_API_KEY"),
             base_url=provider_cfg.get("base-url", "https://openrouter.ai/api/v1"),
         )
