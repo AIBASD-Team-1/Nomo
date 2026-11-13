@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+from catalog import build_system_prompt, parse_reply
 from llm import call_llm
 
 # Base paths
@@ -65,9 +66,11 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
     system_prompt = config.get("system-prompt") or config.get(
         "system_prompt", "You are Nomo CAD assistant."
     )
-    reply = await asyncio.to_thread(
-        call_llm, system_prompt, request.prompt, str(config_path)
+    full_system_prompt = build_system_prompt(system_prompt)
+    answer_text = await asyncio.to_thread(
+        call_llm, full_system_prompt, request.prompt, str(config_path)
     )
+    reply, model = parse_reply(answer_text)
     return PromptResponse(
         status="ok",
         message=reply,
@@ -75,7 +78,7 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
         schema_version=SCHEMA_VERSION,
         type=RESPONSE_TYPE,
         reply=reply,
-        result=None,
+        result=model,
     )
 
 
