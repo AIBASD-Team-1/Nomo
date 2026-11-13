@@ -11,7 +11,7 @@ result = subprocess.run(
         "--cov=.",
         "--cov-branch",
         "--cov-report=term",
-        "--cov-report=html"
+        "--cov-report=html",
     ]
 )
 
@@ -22,4 +22,3 @@ if result.returncode == 0:
     webbrowser.open(report.resolve().as_uri())
 
 sys.exit(result.returncode)
-
