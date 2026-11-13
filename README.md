@@ -44,6 +44,14 @@ frontend compilation step.
 
 ## Tests and quality checks
 
+Run code coverage and create a HTML report.
+
+```powershell
+uv run --locked tools/coverage.py
+```
+
+Run automatic tests.
+
 ```powershell
 uv run --locked pytest
 uv run --locked ruff check .
