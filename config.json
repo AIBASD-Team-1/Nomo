@@ -1,5 +1,5 @@
 {
-  "provider": "copilot",
+  "provider": "openrouter",
   "output-file": "output/response.text",
   "system-prompt": "You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).",
   "providers": {
@@ -8,8 +8,7 @@
     },
     "openrouter": {
       "model": "recursive/flint-v1.0:free",
-      "api_key": "OPENROUTER_API_KEY",
-      "comment" : "Key expires Feb 4 27. Only use free models!!!!",
+      "api_key": "OPENROUTER_API_KEY",      
       "base-url": "https://openrouter.ai/api/v1"
     },
     "claude": {

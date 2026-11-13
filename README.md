@@ -118,6 +118,25 @@ uv run --locked pytest
 
 Review and commit the resulting lockfile changes. Normal installation uses
 `--locked` so an outdated lockfile causes an error rather than an implicit update.
+
+## OpenRouter setup
+
+1. Create an account or sign in at [OpenRouter](https://openrouter.ai).
+2. Open [API Keys](https://openrouter.ai/settings/keys), create a key and copy it.
+3. In `config.json`, set `provider` to `openrouter` and choose an available
+   free model. Leave `providers.openrouter.api_key` empty or omit it;
+   the provider reads the key from `OPENROUTER_API_KEY` automatically.
+4. Set the key in PowerShell and start the application from the same terminal:
+
+   ```powershell
+   $env:OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY"
+   uv run --locked uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+
+The environment variable applies only to this terminal session and programs
+started from it. Set it again when opening a new terminal. Never commit the
+actual key or include it in issues or documentation.
+
 ## GitHub Copilot
 
 Install the project dependencies and download the SDK runtime:
