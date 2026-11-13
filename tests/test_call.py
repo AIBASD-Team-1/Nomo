@@ -31,3 +31,18 @@ def test_call_llm_loads_env_file_next_to_config(tmp_path, monkeypatch):
     result = llm_call.call_llm("system", "prompt", str(config_path))
 
     assert result == "test-key-from-env-file"
+
+
+def test_openrouter_model_from_environment_overrides_config(monkeypatch):
+    config = {
+        "provider": "openrouter",
+        "providers": {"openrouter": {"model": "config/model:free"}},
+    }
+
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+    provider_without_override = llm_call.get_provider(config)
+    assert provider_without_override.model == "config/model:free"
+
+    monkeypatch.setenv("OPENROUTER_MODEL", "environment/model:free")
+    provider_with_override = llm_call.get_provider(config)
+    assert provider_with_override.model == "environment/model:free"

@@ -49,6 +49,7 @@ use one named intermediate variable per step.
 - `api_key` is an **env var name** (e.g. `OPENROUTER_API_KEY`), resolved via `os.getenv`.
   Keys live in `.env` next to `config.json` (git-ignored, loaded by `call_llm` via python-dotenv;
   shell variables win). Copy `.env.example` to start. Never commit real keys.
+- `OPENROUTER_MODEL` (env/`.env`) overrides `providers.openrouter.model`.
 - `model: "MOCK"` on claude/openrouter returns a canned reply without a network call.
 - OpenRouter: free models only.
 - Copilot needs `python -m copilot download-runtime` and a signed-in `copilot` CLI; no key.
