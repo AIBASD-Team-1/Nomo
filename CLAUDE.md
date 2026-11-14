@@ -32,8 +32,10 @@ use one named intermediate variable per step.
 
 - `main.py` — FastAPI app. `POST /api/prompt` reads `config.json` per request, calls `call_llm`
   in a thread, returns `PromptResponse`. Serves `static/` and `/` → `static/index.html`.
-- `catalog.py` — template catalog (box, sphere, cylinder), the system prompt built from it, and
-  `parse_reply` which turns the AI's JSON answer into `reply` + `model` (→ `result`).
+- `templates/` — one JSON file per template (`box`, `sphere`, `cylinder`); file name = `id`.
+  Add a template by adding a file, no code change.
+- `catalog.py` — loads `templates/`, builds the system prompt from it, and `parse_reply`
+  which turns the AI's JSON answer into `reply` + `model` (→ `result`).
 - `cli.py` — argparse CLI over the same `call_llm` (prints the raw answer).
 - `llm/` — providers behind `LLMProvider.call(system_prompt, user_prompt) -> str`:
   `mock`, `openrouter`, `claude` (both raw `urllib`, no SDKs), `copilot` (github-copilot-sdk).

@@ -1,0 +1,20 @@
+{
+  "id": "cylinder",
+  "description": "Solid circular cylinder, e.g. for round legs, rods, pins, dowels",
+  "parameters": {
+    "diameter": {
+      "unit": "mm",
+      "min": 1,
+      "max": 10000,
+      "default": 100
+    },
+    "height": {
+      "unit": "mm",
+      "min": 1,
+      "max": 10000,
+      "default": 100
+    }
+  },
+  "rules": [],
+  "origin": "centre of the bottom face; axis along Z"
+}

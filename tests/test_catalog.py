@@ -1,4 +1,6 @@
-from catalog import build_system_prompt, parse_reply
+import pytest
+
+from catalog import build_system_prompt, load_templates, parse_reply
 
 
 def test_prompt_lists_all_templates():
@@ -19,3 +21,11 @@ def test_parse_reply_falls_back_to_plain_text():
         '{"reply": "no model key"}',
         None,
     )
+
+
+def test_load_templates_rejects_file_name_that_does_not_match_id(tmp_path):
+    template_path = tmp_path / "box.json"
+    template_path.write_text('{"id": "cube"}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="id must be 'box'"):
+        load_templates(tmp_path)
