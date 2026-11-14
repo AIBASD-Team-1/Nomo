@@ -9,5 +9,7 @@
 !config.json
 !llm/
 !llm/**
+!templates/
+!templates/**
 !static/
 !static/**

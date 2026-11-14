@@ -1,0 +1,26 @@
+{
+  "id": "box",
+  "description": "Cuboid, e.g. for panels, legs, battens",
+  "parameters": {
+    "length": {
+      "unit": "mm",
+      "min": 1,
+      "max": 10000,
+      "default": 100
+    },
+    "width": {
+      "unit": "mm",
+      "min": 1,
+      "max": 10000,
+      "default": 100
+    },
+    "height": {
+      "unit": "mm",
+      "min": 1,
+      "max": 10000,
+      "default": 100
+    }
+  },
+  "rules": [],
+  "origin": "centre of the bottom face; length along X, width along Y, height along Z"
+}

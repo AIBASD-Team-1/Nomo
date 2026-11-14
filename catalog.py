@@ -1,40 +1,32 @@
 """Template catalog and the prompt/response format the AI uses to build models from it."""
 
 import json
+from pathlib import Path
 from typing import Any
 
-TEMPLATES = [
-    {
-        "id": "box",
-        "description": "Cuboid, e.g. for panels, legs, battens",
-        "parameters": {
-            "length": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
-            "width": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
-            "height": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
-        },
-        "rules": [],
-        "origin": "centre of the bottom face; length along X, width along Y, height along Z",
-    },
-    {
-        "id": "sphere",
-        "description": "Full sphere, e.g. for knobs, balls, ball feet",
-        "parameters": {
-            "diameter": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
-        },
-        "rules": [],
-        "origin": "lowest point of the sphere; centre at height diameter / 2",
-    },
-    {
-        "id": "cylinder",
-        "description": "Solid circular cylinder, e.g. for round legs, rods, pins, dowels",
-        "parameters": {
-            "diameter": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
-            "height": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
-        },
-        "rules": [],
-        "origin": "centre of the bottom face; axis along Z",
-    },
-]
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+
+
+def load_templates(templates_dir: Path = TEMPLATES_DIR) -> list[dict[str, Any]]:
+    """
+    Load every template from its own JSON file in the templates folder.
+
+    The file name must match the template id, e.g. templates/box.json has "id": "box".
+    """
+    templates = []
+    for template_path in sorted(templates_dir.glob("*.json")):
+        template_text = template_path.read_text(encoding="utf-8")
+        template = json.loads(template_text)
+        if template.get("id") != template_path.stem:
+            raise ValueError(
+                f"{template_path.name}: id must be '{template_path.stem}', "
+                f"got '{template.get('id')}'"
+            )
+        templates.append(template)
+    return templates
+
+
+TEMPLATES = load_templates()
 
 INSTRUCTIONS = """\
 Build the product the user describes ONLY from the templates in this catalog:

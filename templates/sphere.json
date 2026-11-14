@@ -1,0 +1,14 @@
+{
+  "id": "sphere",
+  "description": "Full sphere, e.g. for knobs, balls, ball feet",
+  "parameters": {
+    "diameter": {
+      "unit": "mm",
+      "min": 1,
+      "max": 10000,
+      "default": 100
+    }
+  },
+  "rules": [],
+  "origin": "lowest point of the sphere; centre at height diameter / 2"
+}

@@ -15,6 +15,7 @@ RUN uv sync --locked --no-dev --no-cache --python /usr/local/bin/python \
 COPY main.py catalog.py ./
 COPY config.json ./
 COPY llm ./llm
+COPY templates ./templates
 COPY static ./static
 
 USER nomo
