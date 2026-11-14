@@ -1,8 +1,31 @@
 // Nomo Web Interface - Vanilla JS
 
 const COPY_FEEDBACK_DURATION_MS = 1800;
+const THEME_STORAGE_KEY = "nomo-theme";
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Theme toggle (dark is the default; the initial theme is set in index.html)
+    const themeToggle = document.getElementById("theme-toggle");
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+        themeToggle.setAttribute("aria-label", label);
+        themeToggle.title = label;
+    }
+
+    applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+
+    themeToggle.addEventListener("click", () => {
+        const next =
+            document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        applyTheme(next);
+        try {
+            localStorage.setItem(THEME_STORAGE_KEY, next);
+        } catch (e) {
+            // Storage unavailable; theme just won't persist
+        }
+    });
     // Chat elements
     const chatForm = document.getElementById("chat-form");
     const promptInput = document.getElementById("prompt-input");
