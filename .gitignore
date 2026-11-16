@@ -13,6 +13,13 @@
 .env
 .env.*
 !.env.example
+# Provider presets: only NOMO_PROVIDER, never keys
+!.env.mock
+!.env.openrouter
+!.env.claude
+!.env.codex
+!.env.copilot
+!.env.antigravity
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

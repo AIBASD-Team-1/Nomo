@@ -4,21 +4,42 @@
   "system-prompt": "You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).",
   "providers": {
     "mock": {
-      "model": "MOCK"
+      "type": "mock"
     },
     "openrouter": {
+      "type": "openrouter",
       "model": "recursive/flint-v1.0:free",
-      "api_key": "OPENROUTER_API_KEY",      
+      "effort": "medium",
+      "api_key": "OPENROUTER_API_KEY",
       "base-url": "https://openrouter.ai/api/v1"
     },
     "claude": {
-      "model": "MOCK",
-      "api_key": "CLAUDE_TOKEN",
-      "base-url": "https://api.anthropic.com/v1"
+      "type": "cli",
+      "model": "sonnet",
+      "effort": "medium",
+      "command": ["claude", "-p", "--tools", "", "--no-session-persistence"],
+      "effort-arguments": ["--effort", "{effort}"]
+    },
+    "codex": {
+      "type": "cli",
+      "model": "gpt-5.5",
+      "effort": "medium",
+      "command": ["codex", "exec", "--skip-git-repo-check", "{prompt}"],
+      "effort-arguments": ["-c", "model_reasoning_effort={effort}"]
     },
     "copilot": {
-      "comment": "Setup: Aktiviere das Projekt-Venv, installiere mit `python -m pip install -r requirements.txt`, lade mit `python -m copilot download-runtime` die Runtime und melde dich mit `copilot` und `/login` bei GitHub an. Kein Token noetig.",
-      "model": "gpt-4o"
+      "type": "cli",
+      "model": "auto",
+      "effort": "none",
+      "command": ["copilot", "-s", "-p", "{prompt}"],
+      "effort-arguments": ["--reasoning-effort", "{effort}"]
+    },
+    "antigravity": {
+      "type": "cli",
+      "model": "gemini-3-flash",
+      "effort": "medium",
+      "command": ["agy", "-p", "{prompt}"],
+      "effort-arguments": ["--effort", "{effort}"]
     }
   }
 }

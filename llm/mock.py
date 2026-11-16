@@ -1,21 +1,17 @@
+import json
+
 from .base import LLMProvider
 
 
 class MockProvider(LLMProvider):
     """
-    Mock LLM provider for testing and development without live API keys.
+    Offline provider for development and tests: answers without calling any AI.
     """
 
     def __init__(self, model_name: str = "mock-model"):
         self.model_name = model_name
 
     def call(self, system_prompt: str, user_prompt: str) -> str:
-        """
-        Simulate an LLM response incorporating both system and user prompts.
-        """
-        return (
-            f"[Mock LLM Response ({self.model_name})]\n"
-            f"System Prompt: {system_prompt}\n"
-            f"Received Prompt: '{user_prompt}'\n"
-            f"Result: Design generated successfully based on your specifications."
-        )
+        """Return a valid, empty answer in the format the app expects."""
+        answer = {"reply": f"Mock reply to: {user_prompt}", "model": []}
+        return json.dumps(answer)

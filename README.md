@@ -127,42 +127,75 @@ uv run --locked pytest
 Review and commit the resulting lockfile changes. Normal installation uses
 `--locked` so an outdated lockfile causes an error rather than an implicit update.
 
-## OpenRouter setup
+## Choose your AI provider
 
-1. Create an account or sign in at [OpenRouter](https://openrouter.ai).
-2. Open [API Keys](https://openrouter.ai/settings/keys), create a key and copy it.
-3. In `config.json`, set `provider` to `openrouter` and choose an available
-   free model. Leave `providers.openrouter.api_key` empty or omit it;
-   the provider reads the key from `OPENROUTER_API_KEY`.
-4. From the repository root, create your local environment file in PowerShell:
+Nomo runs with whichever AI you have: an AI CLI subscription or an OpenRouter key.
+You pick it in your own `.env`, so nobody has to edit the shared `config.json`.
+
+| Provider | Type | What you need |
+|---|---|---|
+| `claude` | CLI | [Claude Code](https://claude.com/claude-code) installed and signed in |
+| `codex` | CLI | [Codex CLI](https://github.com/openai/codex) installed and signed in |
+| `copilot` | CLI | [GitHub Copilot CLI](https://github.com/github/copilot-cli) installed and signed in |
+| `antigravity` | CLI | Antigravity CLI (`agy`) installed and signed in |
+| `openrouter` | API | `OPENROUTER_API_KEY` in `.env` (free models only) |
+| `mock` | offline | nothing; returns an empty model, for development |
+
+1. Create your local environment file (git-ignored, never commit it):
 
    ```powershell
    Copy-Item .env.example .env
    notepad .env
    ```
 
-   Replace the example value with your key and save the file. The application
-   and CLI load `.env` automatically from the same directory as `config.json`.
-   The `.env` file is ignored by Git; do not commit or share it.
-5. Start the application:
+2. Set `NOMO_PROVIDER` to one of the names above, and add `OPENROUTER_API_KEY` if you
+   use OpenRouter. Each provider has a default `model` and `effort` in `config.json`;
+   `NOMO_MODEL` and `NOMO_EFFORT` override them (e.g. `NOMO_EFFORT=high`).
+3. Start the app or the CLI:
 
    ```powershell
    uv run --locked uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+   uv run --locked python cli.py "Describe a design"
    ```
 
-An `OPENROUTER_API_KEY` already set in the terminal takes precedence over the
-value in `.env`. Never commit the actual key or include it in issues or
-documentation.
-
-## GitHub Copilot
-
-Install the project dependencies and download the SDK runtime:
+Instead of `NOMO_PROVIDER` in `.env` you can pick a committed preset:
 
 ```powershell
-python -m pip install -r requirements.txt
-python -m copilot download-runtime
+uv run --locked python cli.py --env-file .env.claude "Describe a design"
+uv run --locked uvicorn main:app --env-file .env.claude --reload
 ```
 
-The active provider is selected in `config.json`. For Copilot, keep `provider` set to `copilot`; the SDK uses the credentials from your signed-in Copilot CLI and does not need an API key or base URL. Start `copilot` and complete the GitHub sign-in if prompted, then start the web app with `python main.py` or use the CLI with `python cli.py "Describe a design"`.
+Variables set in the terminal win over the preset, and the preset wins over `.env`.
 
-The configured model is `gpt-4o`; change `providers.copilot.model` in `config.json` if your Copilot plan or organization uses a different available model.
+**OpenRouter key:** sign in at [OpenRouter](https://openrouter.ai), open
+[API Keys](https://openrouter.ai/settings/keys), create a key and put it into
+`.env` as `OPENROUTER_API_KEY`.
+
+### Add another AI CLI
+
+No code change needed, only a new entry under `providers` in `config.json`
+(plus a one-line `.env.<name>` preset and a `!.env.<name>` line in `.gitignore`
+if you want one):
+
+```json
+"mycli": {
+  "type": "cli",
+  "model": "some-model",
+  "effort": "medium",
+  "command": ["mycli", "--print", "{prompt}"],
+  "effort-arguments": ["--effort", "{effort}"]
+}
+```
+
+- The prompt goes to stdin, or into the `{prompt}` argument if the command has one.
+- `--model <model>` is appended automatically; `effort-arguments` are appended with
+  `{effort}` replaced, because every CLI names its effort flag differently.
+- The command runs in an empty temporary folder, so it cannot touch the project.
+
+### Live test
+
+Tests never call an AI. To check your provider for real:
+
+```powershell
+$env:NOMO_LIVE_TEST = "1"; uv run --locked pytest -m integration
+```

@@ -6,44 +6,51 @@ from typing import Any
 from dotenv import load_dotenv
 
 from .base import LLMProvider
-from .claude import ClaudeProvider
-from .github_copilot import CopilotProvider
+from .cli import CliProvider
 from .mock import MockProvider
 from .openrouter import OpenRouterProvider
 
 
 def get_provider(config: dict[str, Any]) -> LLMProvider:
     """
-    Factory function to instantiate the selected LLM provider based on config.
-    """
-    provider_name = config.get("provider", "mock").lower()
-    providers_cfg = config.get("providers", {})
-    provider_cfg = providers_cfg.get(provider_name, {})
+    Build the provider selected in config, by its `type` (cli, openrouter or mock).
 
-    if provider_name == "openrouter":
-        # OPENROUTER_MODEL from the environment or .env overrides the model in config.json
-        configured_model = provider_cfg.get("model", "google/gemma-4-31b-it:free")
-        environment_model = os.getenv("OPENROUTER_MODEL")
-        if environment_model:
-            model_name = environment_model
-        else:
-            model_name = configured_model
+    NOMO_PROVIDER, NOMO_MODEL and NOMO_EFFORT (environment or .env) override
+    `provider`, the model and the effort.
+    """
+    provider_name = os.getenv("NOMO_PROVIDER") or config.get("provider", "mock")
+    providers = config.get("providers", {})
+    if provider_name not in providers:
+        known_names = ", ".join(providers)
+        raise ValueError(
+            f"Unknown provider '{provider_name}'. Configured providers: {known_names}"
+        )
+
+    provider_settings = providers[provider_name]
+    provider_type = provider_settings.get("type")
+    model = os.getenv("NOMO_MODEL") or provider_settings.get("model", "")
+    effort = os.getenv("NOMO_EFFORT") or provider_settings.get("effort", "")
+
+    if provider_type == "cli":
+        return CliProvider(
+            command=provider_settings["command"],
+            model=model,
+            effort=effort,
+            effort_arguments=provider_settings.get("effort-arguments", []),
+        )
+    if provider_type == "openrouter":
         return OpenRouterProvider(
-            model=model_name,
-            api_key=provider_cfg.get("api_key", "OPENROUTER_API_KEY"),
-            base_url=provider_cfg.get("base-url", "https://openrouter.ai/api/v1"),
+            model=model,
+            api_key=provider_settings.get("api_key", ""),
+            base_url=provider_settings.get("base-url", ""),
+            effort=effort,
         )
-    elif provider_name == "claude":
-        return ClaudeProvider(
-            model=provider_cfg.get("model", "MOCK"),
-            api_key=provider_cfg.get("api_key", ""),
-            base_url=provider_cfg.get("base-url", ""),
-        )
-    elif provider_name == "copilot":
-        return CopilotProvider(model=provider_cfg.get("model", "auto"))
-    else:
-        model_name = provider_cfg.get("model", "mock-default")
-        return MockProvider(model_name=model_name)
+    if provider_type == "mock":
+        return MockProvider(model_name=model or "mock")
+    raise ValueError(
+        f"Unknown type '{provider_type}' for provider '{provider_name}'. "
+        "Use cli, openrouter or mock."
+    )
 
 
 def call_llm(
@@ -62,7 +69,7 @@ def call_llm(
             with open(config_path, encoding="utf-8") as f:
                 config = json.load(f)
         else:
-            config = {"provider": "mock"}
+            config = {"provider": "mock", "providers": {"mock": {"type": "mock"}}}
         provider = get_provider(config)
 
     return provider.call(system_prompt=system_prompt, user_prompt=user_prompt)

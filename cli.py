@@ -4,6 +4,8 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from catalog import build_system_prompt
 from llm import call_llm
 
@@ -12,7 +14,7 @@ def load_config(config_path: str = "config.json") -> dict:
     """Load configuration from JSON file."""
     if not os.path.exists(config_path):
         return {
-            "provider": "claude",
+            "provider": "mock",
             "system-prompt": "You are Nomo, an engineering AI assistant that generates CAD models.",
             "output-file": "output/response.text",
         }
@@ -38,7 +40,17 @@ def main():
         default="config.json",
         help="Path to config.json (default: config.json)",
     )
+    parser.add_argument(
+        "--env-file",
+        help="Extra .env file, e.g. .env.claude to pick a provider preset",
+    )
     args = parser.parse_args()
+
+    # Loaded before .env, so the chosen preset wins over NOMO_PROVIDER in .env
+    if args.env_file:
+        if not os.path.exists(args.env_file):
+            parser.error(f"env file not found: {args.env_file}")
+        load_dotenv(args.env_file)
 
     config = load_config(args.config)
     system_prompt = config.get("system-prompt") or config.get(
@@ -52,7 +64,8 @@ def main():
     prompt = args.prompt
     if not prompt:
         print("=== Nomo CAD CLI ===")
-        print(f"Active Provider: {config.get('provider')}")
+        active_provider = os.getenv("NOMO_PROVIDER") or config.get("provider")
+        print(f"Active Provider: {active_provider}")
         try:
             prompt = input("\nEnter your user prompt: ").strip()
         except (KeyboardInterrupt, EOFError):
