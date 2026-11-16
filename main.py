@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from catalog import build_system_prompt, parse_reply
+from catalog import ResponseFormatError, build_system_prompt, parse_reply
 from llm import call_llm
 
 # Base paths
@@ -21,6 +21,11 @@ SCHEMA_VERSION = "1.00"
 STATUS_AI_NOT_IMPLEMENTED = "ai_not_implemented"
 RESPONSE_TYPE = "response"
 DEFAULT_UNIMPLEMENTED_MESSAGE = "The AI does not exist yet."
+MAX_LLM_ATTEMPTS = 10
+INVALID_RESPONSE_MESSAGE = (
+    f"The AI could not produce a valid response after {MAX_LLM_ATTEMPTS} attempts. "
+    "Please try again."
+)
 
 app = FastAPI(title="Nomo CAD Web Interface")
 
@@ -58,6 +63,19 @@ def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:
     )
 
 
+def create_invalid_response_prompt(
+    original_prompt: str, invalid_response: str, validation_error: str
+) -> str:
+    """Build a correction request containing the last invalid answer and its errors."""
+    return (
+        "Your previous response did not match the required JSON response schema. "
+        "Correct it and return only a valid JSON object.\n\n"
+        f"Original user request:\n{original_prompt}\n\n"
+        f"Previous invalid response:\n{invalid_response}\n\n"
+        f"Validation error:\n{validation_error}"
+    )
+
+
 @app.post("/api/prompt", response_model=PromptResponse, response_model_by_alias=True)
 async def process_prompt(request: PromptRequest) -> PromptResponse:
     config_path = BASE_DIR / "config.json"
@@ -67,18 +85,39 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
         "system_prompt", "You are Nomo CAD assistant."
     )
     full_system_prompt = build_system_prompt(system_prompt)
-    answer_text = await asyncio.to_thread(
-        call_llm, full_system_prompt, request.prompt, str(config_path)
-    )
-    reply, model = parse_reply(answer_text)
+    current_user_prompt = request.prompt
+
+    for attempt_number in range(MAX_LLM_ATTEMPTS):
+        answer_text = await asyncio.to_thread(
+            call_llm, full_system_prompt, current_user_prompt, str(config_path)
+        )
+        try:
+            reply, model = parse_reply(answer_text)
+        except ResponseFormatError as error:
+            if attempt_number < MAX_LLM_ATTEMPTS - 1:
+                current_user_prompt = create_invalid_response_prompt(
+                    request.prompt, answer_text, str(error)
+                )
+            continue
+
+        return PromptResponse(
+            status="ok",
+            message=reply,
+            prompt=request.prompt,
+            schema_version=SCHEMA_VERSION,
+            type=RESPONSE_TYPE,
+            reply=reply,
+            result=model,
+        )
+
     return PromptResponse(
-        status="ok",
-        message=reply,
+        status="error",
+        message=INVALID_RESPONSE_MESSAGE,
         prompt=request.prompt,
         schema_version=SCHEMA_VERSION,
         type=RESPONSE_TYPE,
-        reply=reply,
-        result=model,
+        reply=INVALID_RESPONSE_MESSAGE,
+        result=None,
     )
 
 

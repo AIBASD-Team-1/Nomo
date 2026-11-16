@@ -55,8 +55,9 @@ Every kind of part becomes a template behind this one contract: generic shapes, 
 3. **Export.** The built model is exported as a STEP file for download and as a mesh for the 3D view in the browser.
 4. **Generate.**
    - **Input:** the user's prompt, the current model (possibly empty) and the template catalog: each template's id, name, description, parameters and rules.
-   - **Output:** a complete new model and a short reply to the user.
+   - **Output:** one JSON object with exactly `reply` (a string) and `model` (an array). Each model instance has exactly `id`, `template`, `parameters`, `position` and `rotation`; the position and rotation each contain numeric `x`, `y` and `z` values.
    - The AI may only use templates from the catalog.
+   - **Response format repair:** malformed JSON or a response that does not match this structure is sent back to the AI with its validation error. There are at most 10 calls total. If none produces a valid response, the user sees an error and receives no invalid model or raw AI response.
    - **Repair:** if the new model is invalid, the violations go back to the AI to fix, for up to 3 attempts. The reply tells the user about any rule that changed their request. If the model is still invalid after the last attempt, the current model stays unchanged and the user sees the violations.
    - **No fit:** if no template fits the request, the AI says so and the model stays unchanged.
 

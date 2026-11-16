@@ -1,10 +1,63 @@
 """Template catalog and the prompt/response format the AI uses to build models from it."""
 
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictStr,
+    ValidationError,
+    model_validator,
+)
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+FENCED_JSON_PATTERN = re.compile(
+    r"\A```(?:json)?[ \t]*\r?\n(.*?)\r?\n```[ \t]*\Z",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+class Vector3(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    x: FiniteFloat
+    y: FiniteFloat
+    z: FiniteFloat
+
+
+class ModelInstance(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: StrictStr = Field(min_length=1)
+    template: StrictStr = Field(min_length=1)
+    parameters: dict[StrictStr, FiniteFloat]
+    position: Vector3
+    rotation: Vector3
+
+
+class LLMResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    reply: StrictStr
+    model: list[ModelInstance]
+
+    @model_validator(mode="after")
+    def validate_unique_instance_ids(self) -> Self:
+        instance_ids: set[str] = set()
+        for instance in self.model:
+            if instance.id in instance_ids:
+                raise ValueError(f"Instance id '{instance.id}' must be unique.")
+            instance_ids.add(instance.id)
+        return self
+
+
+class ResponseFormatError(ValueError):
+    """Raised when an LLM response cannot be parsed or fails its schema."""
 
 
 def load_templates(templates_dir: Path = TEMPLATES_DIR) -> list[dict[str, Any]]:
@@ -38,12 +91,14 @@ Conventions:
   then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every parameter value must be a number within the template's min/max. Omitted parameters use the default.
 
-Answer with ONE JSON object and nothing else:
+Answer with ONE JSON object and nothing else, matching this exact structure. Do not add any other keys:
 {{"reply": "<short message to the user>",
   "model": [{{"id": "<unique instance id>", "template": "<template id>",
              "parameters": {{"<name>": <number>}},
              "position": {{"x": 0, "y": 0, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0}}}}]}}
-If no template fits the request, say so in "reply" and return "model": [].
+Every instance must contain all five fields shown; `parameters` may be empty. `position` and `rotation`
+must each contain numeric `x`, `y`, and `z` values only. `reply` must be a string and `model` must be
+an array. No fit is still a valid response: explain it in `reply` and return `"model": []`.
 """
 
 
@@ -54,31 +109,35 @@ def build_system_prompt(base_prompt: str) -> str:
     return f"{base_prompt}\n\n{instructions}"
 
 
-def parse_reply(answer_text: str) -> tuple[str, list[dict[str, Any]] | None]:
+def parse_reply(answer_text: str) -> tuple[str, list[dict[str, Any]]]:
     """
-    Split the AI answer into the message for the user and the model.
+    Parse and validate the AI answer before exposing any of its content.
 
-    The model is None when the answer is not the expected JSON object,
-    in that case the whole answer text is used as the message.
+    Raises ResponseFormatError when the answer is not valid JSON or does not
+    match the required response structure.
     """
-    # The JSON object is taken from the first "{" to the last "}".
-    # This removes ```json fences and any text the AI writes around the object.
-    # ponytail: switch to the provider's JSON mode if answers still fail to parse
-    json_start = answer_text.find("{")
-    json_end = answer_text.rfind("}") + 1
-    json_text = answer_text[json_start:json_end]
+    normalized_answer = answer_text.strip()
+    fenced_json = FENCED_JSON_PATTERN.fullmatch(normalized_answer)
+    if fenced_json:
+        normalized_answer = fenced_json.group(1).strip()
 
     try:
-        answer_data = json.loads(json_text)
-    except ValueError:
-        return answer_text, None
+        answer_data = json.loads(normalized_answer)
+    except json.JSONDecodeError as error:
+        raise ResponseFormatError(
+            f"Response is not valid JSON: {error.msg} "
+            f"(line {error.lineno}, column {error.colno})."
+        ) from error
 
-    if not isinstance(answer_data, dict):
-        return answer_text, None
+    try:
+        response = LLMResponse.model_validate(answer_data)
+    except ValidationError as error:
+        validation_details = json.dumps(
+            error.errors(include_input=False, include_context=False), ensure_ascii=False
+        )
+        raise ResponseFormatError(
+            f"Response does not match the required schema: {validation_details}"
+        ) from error
 
-    model = answer_data.get("model")
-    if not isinstance(model, list):
-        return answer_text, None
-
-    reply = str(answer_data.get("reply", ""))
-    return reply, model
+    model = [instance.model_dump(mode="json") for instance in response.model]
+    return response.reply, model
