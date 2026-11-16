@@ -35,3 +35,21 @@ def test_cli_execution_with_mock(tmp_path):
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
     assert prompt in content
+
+
+def test_cli_shows_provider_error_without_traceback(tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        '{"provider": "missing-ai", "output-file": "", "providers": {}}',
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, "cli.py", "A box", "--config", str(config_path)],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "Error: Unknown AI provider 'missing-ai'" in result.stderr
+    assert "Traceback" not in result.stderr

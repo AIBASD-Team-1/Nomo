@@ -5,28 +5,37 @@ import urllib.request
 
 from .base import LLMProvider
 
+DEFAULT_API_KEY_VARIABLE = "OPENROUTER_API_KEY"
+
 
 class OpenRouterProvider(LLMProvider):
     """
-    OpenRouter LLM provider (OpenAI-compatible chat completions).
-    Supports free models on OpenRouter (e.g. meta-llama/llama-3.3-70b-instruct:free).
+    OpenRouter chat completions (free models only).
+    api_key is the name of the environment variable holding the key.
     """
 
     def __init__(
         self,
         model: str = "recursive/flint-v1.0:free",
-        api_key: str = "",
+        effort: str = "",
+        api_key: str | None = "",
         base_url: str = "",
     ):
         self.model = model
-        # Resolve key: check if api_key points to an env var, or is a raw key (sk-...), or fallback to OPENROUTER_API_KEY
-        resolved_key = ""
-        if api_key:
-            resolved_key = os.getenv(api_key, "")
-            if not resolved_key and api_key.startswith("sk-"):
-                resolved_key = api_key
+        self.effort = effort
+        # api_key names an environment variable (or is a raw key starting with sk-);
+        # it may be null in config.json
+        configured_key = api_key or ""
+        if configured_key.startswith("sk-"):
+            self.api_key_name = "api_key in config.json"
+            resolved_key = configured_key
+        else:
+            self.api_key_name = configured_key or DEFAULT_API_KEY_VARIABLE
+            resolved_key = os.getenv(self.api_key_name, "")
         if not resolved_key:
-            resolved_key = os.getenv("OPENROUTER_API_KEY", "")
+            # A named variable that is not set falls back to OPENROUTER_API_KEY
+            self.api_key_name = DEFAULT_API_KEY_VARIABLE
+            resolved_key = os.getenv(DEFAULT_API_KEY_VARIABLE, "")
 
         clean_key = resolved_key.strip().strip('"').strip("'")
         if clean_key.startswith("Bearer "):
@@ -45,11 +54,10 @@ class OpenRouterProvider(LLMProvider):
             )
 
         if not self.api_key:
+            # The configured api_key is not shown: it may be a real key put there by mistake
             raise ValueError(
-                "OPENROUTER_API_KEY is not set!\n"
-                "Please run this in your terminal first:\n"
-                '  export OPENROUTER_API_KEY="sk-or-v1-..."\n'
-                "Or insert your key directly in config.json under providers.openrouter.api_key."
+                "The OpenRouter API key is not set. Add OPENROUTER_API_KEY=... to your "
+                ".env file (or the variable that api_key in config.json names)."
             )
 
         # Print masked key info for debugging
@@ -58,7 +66,7 @@ class OpenRouterProvider(LLMProvider):
             if len(self.api_key) > 15
             else "***"
         )
-        print(f"Using OpenRouter Key: {masked} (length: {len(self.api_key)})")
+        print(f"Using {self.api_key_name}: {masked} (length: {len(self.api_key)})")
 
         endpoint = (
             f"{self.base_url}/chat/completions"
@@ -78,6 +86,9 @@ class OpenRouterProvider(LLMProvider):
                 {"role": "user", "content": user_prompt},
             ],
         }
+        if self.effort:
+            # OpenRouter's reasoning setting; models without reasoning ignore it
+            payload["reasoning"] = {"effort": self.effort}
 
         req = urllib.request.Request(
             endpoint,

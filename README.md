@@ -127,23 +127,59 @@ uv run --locked pytest
 Review and commit the resulting lockfile changes. Normal installation uses
 `--locked` so an outdated lockfile causes an error rather than an implicit update.
 
+## Choose your AI
+
+Nomo works with the AI command line tools of your subscription plan (signed in, no key)
+and with the OpenRouter API (key needed). Pick one in your own `.env` file (git-ignored):
+
+```powershell
+Set-Content .env "NOMO_PROVIDER=claude-code"
+uv run --locked uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+| `NOMO_PROVIDER` | Uses | Needs | Model, effort |
+| --- | --- | --- | --- |
+| `claude-code` | Claude Code CLI (`claude`) | installed and signed in | `sonnet`, `low` |
+| `codex` | OpenAI Codex CLI (`codex`) | installed and signed in | `gpt-6-astra`, `low` |
+| `copilot` | GitHub Copilot CLI (`copilot`) | installed and signed in | `claude-opus-5.5`, `low` |
+| `openrouter` | OpenRouter API, free models only | `OPENROUTER_API_KEY` in `.env` | `recursive/flint-v1.0:free` |
+| `mock` | No AI, canned reply | nothing | |
+
+The model and effort defaults are in `config.json`. Override them in `.env` with
+`NOMO_<PROVIDER>_MODEL` and `NOMO_<PROVIDER>_EFFORT`, the provider name in capitals with
+`_` for `-` (e.g. `NOMO_CLAUDE_CODE_EFFORT=high`, `NOMO_CODEX_MODEL=...`; the allowed
+levels depend on the tool). Each one only changes its own provider, so `.env` can hold
+settings for several AIs at once. `NOMO_PROVIDER` overrides `provider` in `config.json`. Nomo runs a CLI once per
+prompt in an empty temporary folder and uses its output as the answer.
+
+For each provider there is a ready-made `.env.<provider>` file. Use one for a single
+run without changing `.env` (keys still come from `.env`):
+
+```powershell
+uv run --locked python cli.py --env-file .env.codex "A box 20 x 10 x 5 mm"
+uv run --locked uvicorn main:app --reload --env-file .env.codex
+```
+
+To add another AI CLI, add an entry under `providers` in `config.json` with
+`"type": "cli"` and its `command`, no code change needed. The prompt goes to stdin, or in
+place of `{prompt}` if an argument contains it. The model is passed as `--model <model>`,
+the effort as `effort-arguments` with `{effort}` in them (e.g. `["--effort", "{effort}"]`).
+
+Keys belong only in `.env`, never in the committed `.env.<provider>` files.
+
 ## OpenRouter setup
 
 1. Create an account or sign in at [OpenRouter](https://openrouter.ai).
 2. Open [API Keys](https://openrouter.ai/settings/keys), create a key and copy it.
-3. In `config.json`, set `provider` to `openrouter` and choose an available
-   free model. Leave `providers.openrouter.api_key` empty or omit it;
-   the provider reads the key from `OPENROUTER_API_KEY`.
-4. From the repository root, create your local environment file in PowerShell:
+3. From the repository root, create your local `.env` file in PowerShell:
 
    ```powershell
-   Copy-Item .env.example .env
-   notepad .env
+   Set-Content .env "NOMO_PROVIDER=openrouter`nOPENROUTER_API_KEY=sk-or-v1-..."
    ```
 
-   Replace the example value with your key and save the file. The application
-   and CLI load `.env` automatically from the same directory as `config.json`.
-   The `.env` file is ignored by Git; do not commit or share it.
+   Use your key in place of `sk-or-v1-...`. The application and CLI load `.env`
+   automatically from the same directory as `config.json`. Do not commit or share it.
+4. Optionally pick another free model with `NOMO_OPENROUTER_MODEL=...` in `.env`.
 5. Start the application:
 
    ```powershell
@@ -153,16 +189,3 @@ Review and commit the resulting lockfile changes. Normal installation uses
 An `OPENROUTER_API_KEY` already set in the terminal takes precedence over the
 value in `.env`. Never commit the actual key or include it in issues or
 documentation.
-
-## GitHub Copilot
-
-Install the project dependencies and download the SDK runtime:
-
-```powershell
-python -m pip install -r requirements.txt
-python -m copilot download-runtime
-```
-
-The active provider is selected in `config.json`. For Copilot, keep `provider` set to `copilot`; the SDK uses the credentials from your signed-in Copilot CLI and does not need an API key or base URL. Start `copilot` and complete the GitHub sign-in if prompted, then start the web app with `python main.py` or use the CLI with `python cli.py "Describe a design"`.
-
-The configured model is `gpt-4o`; change `providers.copilot.model` in `config.json` if your Copilot plan or organization uses a different available model.

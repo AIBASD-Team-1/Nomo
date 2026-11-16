@@ -1,6 +1,0 @@
-fastapi
-github-copilot-sdk
-httpx
-pytest
-python-dotenv
-uvicorn

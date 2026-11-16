@@ -1,5 +1,8 @@
 import asyncio
 import json
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +13,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from catalog import ResponseFormatError, build_system_prompt, parse_reply
 from llm import call_llm
+from llm.cli_provider import stop_running_tools
 
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -19,6 +23,7 @@ INDEX_HTML_PATH = STATIC_DIR / "index.html"
 # Response contract defaults
 SCHEMA_VERSION = "1.00"
 STATUS_AI_NOT_IMPLEMENTED = "ai_not_implemented"
+STATUS_PROVIDER_ERROR = "error"
 RESPONSE_TYPE = "response"
 DEFAULT_UNIMPLEMENTED_MESSAGE = "The AI does not exist yet."
 MAX_LLM_ATTEMPTS = 10
@@ -27,7 +32,18 @@ INVALID_RESPONSE_MESSAGE = (
     "Please try again."
 )
 
-app = FastAPI(title="Nomo CAD Web Interface")
+logger = logging.getLogger("nomo")
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    yield
+    # An AI CLI still answering a prompt runs in its own process group and would
+    # outlive the server
+    stop_running_tools()
+
+
+app = FastAPI(title="Nomo CAD Web Interface", lifespan=lifespan)
 
 
 class PromptRequest(BaseModel):
@@ -63,6 +79,20 @@ def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:
     )
 
 
+def create_provider_error_response(prompt: str, error: Exception) -> PromptResponse:
+    """Builds the response for an AI provider that could not answer."""
+    error_message = str(error)
+    return PromptResponse(
+        status=STATUS_PROVIDER_ERROR,
+        message=error_message,
+        prompt=prompt,
+        schema_version=SCHEMA_VERSION,
+        type=RESPONSE_TYPE,
+        reply=f"Error: {error_message}",
+        result=None,
+    )
+
+
 def create_invalid_response_prompt(
     original_prompt: str, invalid_response: str, validation_error: str
 ) -> str:
@@ -88,9 +118,15 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
     current_user_prompt = request.prompt
 
     for attempt_number in range(MAX_LLM_ATTEMPTS):
-        answer_text = await asyncio.to_thread(
-            call_llm, full_system_prompt, current_user_prompt, str(config_path)
-        )
+        try:
+            answer_text = await asyncio.to_thread(
+                call_llm, full_system_prompt, current_user_prompt, str(config_path)
+            )
+        except (RuntimeError, ValueError, OSError) as error:
+            # A missing or failing AI (not installed, not signed in, timeout, unknown
+            # provider, missing key) is shown to the user instead of a bare HTTP 500
+            logger.warning("The AI provider failed: %s", error)
+            return create_provider_error_response(request.prompt, error)
         try:
             reply, model = parse_reply(answer_text)
         except ResponseFormatError as error:
