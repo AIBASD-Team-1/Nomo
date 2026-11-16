@@ -7,35 +7,6 @@ import pytest
 from llm.claude import ClaudeProvider
 
 
-class FakeResponse:
-    def __init__(self, body):
-        self.body = body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return False
-
-    def read(self):
-        return json.dumps(self.body).encode("utf-8")
-
-
-def fake_urlopen_returning(body, sent_requests):
-    def fake_urlopen(request, timeout):
-        sent_requests.append(request)
-        return FakeResponse(body)
-
-    return fake_urlopen
-
-
-def fake_urlopen_raising(error):
-    def fake_urlopen(request, timeout):
-        raise error
-
-    return fake_urlopen
-
-
 def test_claude_provider_resolves_api_key_from_environment(monkeypatch):
     monkeypatch.setenv("MY_CLAUDE_KEY", "secret-key")
 
@@ -68,23 +39,19 @@ def test_claude_provider_returns_mock_reply_without_api_key(monkeypatch):
     assert "Claude Mock Response" in reply
 
 
-def test_claude_provider_sends_request_and_joins_text_parts(monkeypatch):
-    sent_requests = []
-    response_body = {
+def test_claude_provider_sends_request_and_joins_text_parts(fake_urlopen):
+    fake_urlopen.body = {
         "content": [
             {"type": "text", "text": "First"},
             {"type": "tool_use"},
             {"type": "text", "text": "Second"},
         ]
     }
-    monkeypatch.setattr(
-        "urllib.request.urlopen", fake_urlopen_returning(response_body, sent_requests)
-    )
     provider = ClaudeProvider(model="claude-test", api_key="key")
 
     reply = provider.call("System prompt", "User prompt")
 
-    request = sent_requests[0]
+    request = fake_urlopen.sent_requests[0]
     payload = json.loads(request.data)
     assert reply == "First\nSecond"
     assert request.full_url == "https://api.anthropic.com/v1/messages"
@@ -94,32 +61,27 @@ def test_claude_provider_sends_request_and_joins_text_parts(monkeypatch):
     assert payload["messages"] == [{"role": "user", "content": "User prompt"}]
 
 
-def test_claude_provider_returns_raw_result_without_text_parts(monkeypatch):
-    response_body = {"content": []}
-    monkeypatch.setattr(
-        "urllib.request.urlopen", fake_urlopen_returning(response_body, [])
-    )
+def test_claude_provider_returns_raw_result_without_text_parts(fake_urlopen):
+    fake_urlopen.body = {"content": []}
     provider = ClaudeProvider(model="claude-test", api_key="key")
 
     reply = provider.call("system", "prompt")
 
-    assert reply == str(response_body)
+    assert reply == str(fake_urlopen.body)
 
 
-def test_claude_provider_raises_runtime_error_for_http_error(monkeypatch):
-    http_error = urllib.error.HTTPError(
+def test_claude_provider_raises_runtime_error_for_http_error(fake_urlopen):
+    fake_urlopen.error = urllib.error.HTTPError(
         "https://api.anthropic.com", 401, "Unauthorized", {}, io.BytesIO(b"bad key")
     )
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen_raising(http_error))
     provider = ClaudeProvider(model="claude-test", api_key="key")
 
     with pytest.raises(RuntimeError, match="HTTP 401"):
         provider.call("system", "prompt")
 
 
-def test_claude_provider_raises_runtime_error_for_network_error(monkeypatch):
-    network_error = urllib.error.URLError("no connection")
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen_raising(network_error))
+def test_claude_provider_raises_runtime_error_for_network_error(fake_urlopen):
+    fake_urlopen.error = urllib.error.URLError("no connection")
     provider = ClaudeProvider(model="claude-test", api_key="key")
 
     with pytest.raises(RuntimeError, match="no connection"):
