@@ -6,19 +6,32 @@
     "mock": {
       "model": "MOCK"
     },
-    "openrouter": {
-      "model": "recursive/flint-v1.0:free",
-      "api_key": "OPENROUTER_API_KEY",      
-      "base-url": "https://openrouter.ai/api/v1"
+    "claude-code": {
+      "type": "cli",
+      "model": "sonnet",
+      "effort": "low",
+      "command": ["claude", "-p", "--tools", "", "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"],
+      "effort-arguments": ["--effort", "{effort}"]
     },
-    "claude": {
-      "model": "MOCK",
-      "api_key": "CLAUDE_TOKEN",
-      "base-url": "https://api.anthropic.com/v1"
+    "codex": {
+      "type": "cli",
+      "model": "gpt-6-astra",
+      "effort": "low",
+      "command": ["codex", "exec", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--sandbox", "read-only", "--disable", "shell_tool", "--disable", "unified_exec", "--disable", "apps", "--disable", "plugins", "--disable", "browser_use", "--disable", "browser_use_external", "--disable", "in_app_browser", "--disable", "computer_use", "--disable", "image_generation", "--disable", "view_image", "-c", "web_search=\"disabled\"", "-"],
+      "effort-arguments": ["-c", "model_reasoning_effort={effort}"]
     },
     "copilot": {
-      "comment": "Setup: Aktiviere das Projekt-Venv, installiere mit `python -m pip install -r requirements.txt`, lade mit `python -m copilot download-runtime` die Runtime und melde dich mit `copilot` und `/login` bei GitHub an. Kein Token noetig.",
-      "model": "gpt-4o"
+      "type": "cli",
+      "model": "claude-opus-5.5",
+      "effort": "low",
+      "command": ["copilot", "-p", "{prompt}", "-s", "--no-custom-instructions"],
+      "effort-arguments": ["--reasoning-effort", "{effort}"]
+    },
+    "openrouter": {
+      "model": "recursive/flint-v1.0:free",
+      "effort": "",
+      "api_key": "OPENROUTER_API_KEY",
+      "base-url": "https://openrouter.ai/api/v1"
     }
   }
 }

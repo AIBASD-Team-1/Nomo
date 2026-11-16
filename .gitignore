@@ -12,7 +12,12 @@
 *.env
 .env
 .env.*
-!.env.example
+# Provider presets: no secrets, keys go in .env
+!.env.claude-code
+!.env.codex
+!.env.copilot
+!.env.openrouter
+!.env.mock
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

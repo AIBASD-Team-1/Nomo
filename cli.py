@@ -6,13 +6,14 @@ from pathlib import Path
 
 from catalog import build_system_prompt
 from llm import call_llm
+from llm.call import get_provider, load_environment
 
 
 def load_config(config_path: str = "config.json") -> dict:
     """Load configuration from JSON file."""
     if not os.path.exists(config_path):
         return {
-            "provider": "claude",
+            "provider": "mock",
             "system-prompt": "You are Nomo, an engineering AI assistant that generates CAD models.",
             "output-file": "output/response.text",
         }
@@ -38,7 +39,15 @@ def main():
         default="config.json",
         help="Path to config.json (default: config.json)",
     )
+    parser.add_argument(
+        "--env-file",
+        help="Extra .env file, e.g. .env.codex (wins over .env)",
+    )
     args = parser.parse_args()
+    try:
+        load_environment(args.config, args.env_file)
+    except FileNotFoundError as error:
+        parser.error(str(error))
 
     config = load_config(args.config)
     system_prompt = config.get("system-prompt") or config.get(
@@ -52,7 +61,8 @@ def main():
     prompt = args.prompt
     if not prompt:
         print("=== Nomo CAD CLI ===")
-        print(f"Active Provider: {config.get('provider')}")
+        active_provider = os.getenv("NOMO_PROVIDER") or config.get("provider")
+        print(f"Active Provider: {active_provider}")
         try:
             prompt = input("\nEnter your user prompt: ").strip()
         except (KeyboardInterrupt, EOFError):
@@ -65,11 +75,22 @@ def main():
 
     # 2. Implement LLM call (pass system prompt and user prompt)
     print("\nCalling LLM...")
-    response_text = call_llm(
-        system_prompt=build_system_prompt(system_prompt),
-        user_prompt=prompt,
-        config_path=args.config,
-    )
+    try:
+        # The env files were loaded once above, so call_llm gets the provider
+        provider = get_provider(config)
+        response_text = call_llm(
+            system_prompt=build_system_prompt(system_prompt),
+            user_prompt=prompt,
+            provider=provider,
+        )
+    except (RuntimeError, ValueError, OSError) as error:
+        # A missing or failing AI (not installed, not signed in, timeout, unknown
+        # provider, missing key): its message is enough, a traceback only hides it
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nAborted.")
+        sys.exit(130)
 
     # 3. User receives a text response from the LLM
     print("\n--- LLM Response ---")
