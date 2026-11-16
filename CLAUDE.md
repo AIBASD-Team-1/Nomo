@@ -37,24 +37,33 @@ use one named intermediate variable per step.
 - `catalog.py` — loads `templates/`, builds the system prompt from it, and `parse_reply`
   which turns the AI's JSON answer into `reply` + `model` (→ `result`).
 - `cli.py` — argparse CLI over the same `call_llm` (prints the raw answer).
-- `llm/` — providers behind `LLMProvider.call(system_prompt, user_prompt) -> str`:
-  `mock`, `openrouter`, `claude` (both raw `urllib`, no SDKs), `copilot` (github-copilot-sdk).
-  `llm/call.py:get_provider` picks one from config; unknown names fall back to mock.
+- `llm/` — providers behind `LLMProvider.call(system_prompt, user_prompt) -> str`, picked in
+  `llm/call.py:get_provider`: entries with `"type": "cli"` → `cli_provider.py` (runs an AI CLI
+  like `claude -p` / `codex exec` / `copilot -p` in an empty temp dir, prompt on
+  stdin or in place of `{prompt}`, `--model`, `effort-arguments`); `openrouter` →
+  `openrouter.py` (raw `urllib`, no SDK; the only API); `mock` → mock; any other name raises.
 - `static/` — plain HTML/CSS/JS, no build step. `app.js` posts to `/api/prompt`.
 - `docs/` — spec, proposal, stories, presentation, wireframes. Not shipped in Docker.
 
 ## Config (`config.json`)
 
-- `provider` selects the active provider; `providers.<name>` holds `model`, `api_key`, `base-url`.
+- `provider` selects the active provider; `providers.<name>` holds `model`, `effort`, and
+  `type: cli` + `command` + `effort-arguments` (CLIs) or `api_key` + `base-url` (OpenRouter).
+  `NOMO_PROVIDER` and the per-provider `NOMO_<PROVIDER>_MODEL` / `NOMO_<PROVIDER>_EFFORT`
+  (e.g. `NOMO_CLAUDE_CODE_MODEL`, see `llm/call.py:provider_variable_name`) in env/`.env`
+  override them. They name the provider so a preset switch never leaks another AI's model.
 - Keys accept both `kebab-case` and `snake_case` (`system-prompt` / `system_prompt`) — keep both
   lookups when touching config reads.
 - `api_key` is an **env var name** (e.g. `OPENROUTER_API_KEY`), resolved via `os.getenv`.
   Keys live in `.env` next to `config.json` (git-ignored, loaded by `call_llm` via python-dotenv;
-  shell variables win). Copy `.env.example` to start. Never commit real keys.
-- `OPENROUTER_MODEL` (env/`.env`) overrides `providers.openrouter.model`.
-- `model: "MOCK"` on claude/openrouter returns a canned reply without a network call.
+  shell variables win). Committed `.env.<provider>` presets only set `NOMO_PROVIDER`; pick one
+  with `cli.py --env-file` / `uvicorn --env-file` (it wins over `.env`, `.env` still supplies
+  keys). Add a new preset to the `!.env.<name>` list in `.gitignore`. Never commit real keys.
+- `OPENROUTER_MODEL` (env/`.env`) is the older name of `NOMO_OPENROUTER_MODEL`.
+- `model: "MOCK"` on openrouter returns a canned reply without a network call.
 - OpenRouter: free models only.
-- Copilot needs `python -m copilot download-runtime` and a signed-in `copilot` CLI; no key.
+- AI CLIs (`claude-code`, `codex`, `copilot`) must be installed, on `PATH` and
+  signed in; no key.
 
 ## API contract
 
@@ -64,11 +73,11 @@ update `EXPECTED_DOM_ELEMENT_IDS` if you rename/remove ids the frontend depends 
 
 ## Tests
 
-- Tests must not hit the network: monkeypatch `main.call_llm` or the SDK client
-  (see `tests/test_copilot.py`), or use the mock provider via a temp config.
-- Live Copilot test is opt-in: `NOMO_COPILOT_INTEGRATION=1 uv run --locked pytest -m integration`.
+- Tests must not hit the network: monkeypatch `main.call_llm`, use a fake CLI (see
+  `tests/test_cli_provider.py`), or the mock provider via a temp config.
+- Live test against a real provider is opt-in:
+  `NOMO_LIVE_PROVIDER=claude-code uv run --locked pytest -m integration`.
 
 ## Dependencies
 
-Declare in `pyproject.toml`, lock with `uv lock`, commit `uv.lock`. `requirements.txt` exists only
-for the pip-based Copilot setup in the README — keep it in sync if you add runtime deps.
+Declare in `pyproject.toml`, lock with `uv lock`, commit `uv.lock`.

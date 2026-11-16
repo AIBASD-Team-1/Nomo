@@ -82,6 +82,23 @@ def test_prompt_endpoint_returns_valid_json_contract(monkeypatch):
     assert data["result"] is None
 
 
+def test_prompt_endpoint_shows_provider_error_to_the_user(monkeypatch):
+    def failing_call_llm(system_prompt, user_prompt, config_path):
+        raise RuntimeError("'claude' was not found. Install it and sign in.")
+
+    monkeypatch.setattr(main, "call_llm", failing_call_llm)
+    response = client.post("/api/prompt", json={"prompt": "A box"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["prompt"] == "A box"
+    assert data["schema-version"] == "1.00"
+    assert "'claude' was not found" in data["message"]
+    assert data["reply"].startswith("Error: ")
+    assert data["result"] is None
+
+
 def test_prompt_endpoint_rejects_missing_payload():
     """
     Verifies that the endpoint validates the request body and returns 422
