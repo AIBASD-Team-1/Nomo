@@ -1,6 +1,95 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
+
+import cli
+
+
+def write_mock_config(tmp_path, output_file):
+    config_path = tmp_path / "config.json"
+    config = {
+        "provider": "mock",
+        "system-prompt": "DUMMY",
+        "output-file": str(output_file),
+    }
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    return config_path
+
+
+def test_load_config_returns_defaults_when_file_is_missing(tmp_path):
+    config = cli.load_config(str(tmp_path / "missing.json"))
+
+    assert config["provider"] == "claude"
+    assert config["output-file"] == "output/response.text"
+
+
+def test_load_config_reads_existing_file(tmp_path):
+    config_path = write_mock_config(tmp_path, tmp_path / "response.text")
+
+    config = cli.load_config(str(config_path))
+
+    assert config["provider"] == "mock"
+    assert config["system-prompt"] == "DUMMY"
+
+
+def test_save_response_creates_missing_parent_directory(tmp_path):
+    output_path = tmp_path / "nested" / "response.text"
+
+    cli.save_response("Saved text", str(output_path))
+
+    assert output_path.read_text(encoding="utf-8") == "Saved text"
+
+
+def test_main_writes_response_to_output_file(tmp_path, monkeypatch):
+    output_path = tmp_path / "response.text"
+    config_path = write_mock_config(tmp_path, output_path)
+    monkeypatch.setattr(
+        sys, "argv", ["cli.py", "Build a box", "--config", str(config_path)]
+    )
+
+    cli.main()
+
+    assert "Build a box" in output_path.read_text(encoding="utf-8")
+
+
+def test_main_asks_for_prompt_when_no_argument_is_given(tmp_path, monkeypatch):
+    output_path = tmp_path / "response.text"
+    config_path = write_mock_config(tmp_path, output_path)
+    monkeypatch.setattr(sys, "argv", ["cli.py", "--config", str(config_path)])
+    monkeypatch.setattr("builtins.input", lambda message: "Interactive box")
+
+    cli.main()
+
+    assert "Interactive box" in output_path.read_text(encoding="utf-8")
+
+
+def test_main_exits_with_error_for_empty_prompt(tmp_path, monkeypatch):
+    config_path = write_mock_config(tmp_path, tmp_path / "response.text")
+    monkeypatch.setattr(sys, "argv", ["cli.py", "--config", str(config_path)])
+    monkeypatch.setattr("builtins.input", lambda message: "   ")
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+
+    assert exit_info.value.code == 1
+
+
+def test_main_exits_quietly_when_input_is_aborted(tmp_path, monkeypatch):
+    config_path = write_mock_config(tmp_path, tmp_path / "response.text")
+    monkeypatch.setattr(sys, "argv", ["cli.py", "--config", str(config_path)])
+
+    def abort_input(message):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", abort_input)
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+
+    assert exit_info.value.code == 0
 
 
 def test_cli_execution_with_mock(tmp_path):
