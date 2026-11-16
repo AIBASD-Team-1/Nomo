@@ -39,7 +39,7 @@ use one named intermediate variable per step.
 - `cli.py` — argparse CLI over the same `call_llm` (prints the raw answer).
 - `llm/` — providers behind `LLMProvider.call(system_prompt, user_prompt) -> str`, picked in
   `llm/call.py:get_provider`: entries with `"type": "cli"` → `cli_provider.py` (runs an AI CLI
-  like `claude -p` / `codex exec` / `copilot -p` in an empty temp dir, prompt on
+  like `claude -p` / `codex exec` / `copilot -s` in an empty temp dir, prompt on
   stdin or in place of `{prompt}`, `--model`, `effort-arguments`); `openrouter` →
   `openrouter.py` (raw `urllib`, no SDK; the only API); `mock` → mock; any other name raises.
 - `static/` — plain HTML/CSS/JS, no build step. `app.js` posts to `/api/prompt`.
