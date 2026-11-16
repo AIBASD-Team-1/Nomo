@@ -7,35 +7,6 @@ import pytest
 from llm.openrouter import OpenRouterProvider
 
 
-class FakeResponse:
-    def __init__(self, body):
-        self.body = body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return False
-
-    def read(self):
-        return json.dumps(self.body).encode("utf-8")
-
-
-def fake_urlopen_returning(body, sent_requests):
-    def fake_urlopen(request, timeout):
-        sent_requests.append(request)
-        return FakeResponse(body)
-
-    return fake_urlopen
-
-
-def fake_urlopen_raising(error):
-    def fake_urlopen(request, timeout):
-        raise error
-
-    return fake_urlopen
-
-
 def test_openrouter_provider_resolves_api_key_from_environment(monkeypatch):
     monkeypatch.setenv("MY_OPENROUTER_KEY", "secret-key")
 
@@ -77,17 +48,13 @@ def test_openrouter_provider_requires_api_key(monkeypatch):
         provider.call("system", "prompt")
 
 
-def test_openrouter_provider_sends_request_and_returns_message(monkeypatch):
-    sent_requests = []
-    response_body = {"choices": [{"message": {"content": "Model reply"}}]}
-    monkeypatch.setattr(
-        "urllib.request.urlopen", fake_urlopen_returning(response_body, sent_requests)
-    )
+def test_openrouter_provider_sends_request_and_returns_message(fake_urlopen):
+    fake_urlopen.body = {"choices": [{"message": {"content": "Model reply"}}]}
     provider = OpenRouterProvider(model="test/model:free", api_key="sk-test-key")
 
     reply = provider.call("System prompt", "User prompt")
 
-    request = sent_requests[0]
+    request = fake_urlopen.sent_requests[0]
     payload = json.loads(request.data)
     assert reply == "Model reply"
     assert request.full_url == "https://openrouter.ai/api/v1/chat/completions"
@@ -99,36 +66,31 @@ def test_openrouter_provider_sends_request_and_returns_message(monkeypatch):
     ]
 
 
-def test_openrouter_provider_returns_raw_json_without_choices(monkeypatch):
-    response_body = {"error": "no choices"}
-    monkeypatch.setattr(
-        "urllib.request.urlopen", fake_urlopen_returning(response_body, [])
-    )
+def test_openrouter_provider_returns_raw_json_without_choices(fake_urlopen):
+    fake_urlopen.body = {"error": "no choices"}
     provider = OpenRouterProvider(model="test/model:free", api_key="sk-test-key")
 
     reply = provider.call("system", "prompt")
 
-    assert json.loads(reply) == response_body
+    assert json.loads(reply) == fake_urlopen.body
 
 
-def test_openrouter_provider_raises_runtime_error_for_http_error(monkeypatch):
-    http_error = urllib.error.HTTPError(
+def test_openrouter_provider_raises_runtime_error_for_http_error(fake_urlopen):
+    fake_urlopen.error = urllib.error.HTTPError(
         "https://openrouter.ai",
         429,
         "Too Many Requests",
         {},
         io.BytesIO(b"rate limited"),
     )
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen_raising(http_error))
     provider = OpenRouterProvider(model="test/model:free", api_key="sk-test-key")
 
     with pytest.raises(RuntimeError, match="HTTP 429"):
         provider.call("system", "prompt")
 
 
-def test_openrouter_provider_raises_runtime_error_for_network_error(monkeypatch):
-    network_error = urllib.error.URLError("no connection")
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen_raising(network_error))
+def test_openrouter_provider_raises_runtime_error_for_network_error(fake_urlopen):
+    fake_urlopen.error = urllib.error.URLError("no connection")
     provider = OpenRouterProvider(model="test/model:free", api_key="sk-test-key")
 
     with pytest.raises(RuntimeError, match="no connection"):
