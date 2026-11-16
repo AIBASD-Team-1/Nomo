@@ -64,7 +64,9 @@ def test_prompt_endpoint_returns_valid_json_contract(monkeypatch):
     monkeypatch.setattr(
         main,
         "call_llm",
-        lambda system_prompt, user_prompt, config_path: "Mock reply",
+        lambda system_prompt, user_prompt, config_path: (
+            '{"reply": "Mock reply", "model": []}'
+        ),
     )
     response = client.post("/api/prompt", json={"prompt": prompt_text})
 
@@ -79,7 +81,53 @@ def test_prompt_endpoint_returns_valid_json_contract(monkeypatch):
     assert data["schema-version"] == "1.00"
     assert data["type"] == "response"
     assert data["reply"] == "Mock reply"
+    assert data["result"] == []
+
+
+def test_prompt_endpoint_retries_invalid_answer_with_validation_error(monkeypatch):
+    prompt_text = "Kitchen table"
+    user_prompts = []
+    answers = iter(
+        [
+            '{"reply": "invalid", "model": [{"id": "table"}]}',
+            '{"reply": "Corrected answer", "model": []}',
+        ]
+    )
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        user_prompts.append(user_prompt)
+        return next(answers)
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    response = client.post("/api/prompt", json={"prompt": prompt_text})
+
+    assert response.status_code == 200
+    assert response.json()["reply"] == "Corrected answer"
+    assert response.json()["result"] == []
+    assert len(user_prompts) == 2
+    assert prompt_text in user_prompts[1]
+    assert "Previous invalid response" in user_prompts[1]
+    assert "Validation error" in user_prompts[1]
+    assert "id" in user_prompts[1]
+
+
+def test_prompt_endpoint_returns_error_after_ten_invalid_answers(monkeypatch):
+    invalid_responses = []
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        invalid_responses.append(user_prompt)
+        return "Invalid response that must not reach the user"
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    response = client.post("/api/prompt", json={"prompt": "Make a table"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(invalid_responses) == main.MAX_LLM_ATTEMPTS
+    assert data["status"] == "error"
+    assert data["reply"] == main.INVALID_RESPONSE_MESSAGE
     assert data["result"] is None
+    assert "Invalid response that must not reach the user" not in response.text
 
 
 def test_prompt_endpoint_rejects_missing_payload():
