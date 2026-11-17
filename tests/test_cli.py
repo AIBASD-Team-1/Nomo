@@ -92,6 +92,69 @@ def test_main_exits_quietly_when_input_is_aborted(tmp_path, monkeypatch):
     assert exit_info.value.code == 0
 
 
+def test_main_rejects_missing_env_file(tmp_path, monkeypatch):
+    config_path = write_mock_config(tmp_path, tmp_path / "response.text")
+    missing_env_file = tmp_path / ".env.missing"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "cli.py",
+            "A box",
+            "--config",
+            str(config_path),
+            "--env-file",
+            str(missing_env_file),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+
+    assert exit_info.value.code == 2
+
+
+def test_main_shows_provider_error_and_exits(tmp_path, monkeypatch, capsys):
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"provider": "missing-ai"}', encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["cli.py", "A box", "--config", str(config_path)])
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+
+    assert exit_info.value.code == 1
+    assert "Unknown AI provider 'missing-ai'" in capsys.readouterr().err
+
+
+def test_main_exits_with_130_when_interrupted_during_call(tmp_path, monkeypatch):
+    config_path = write_mock_config(tmp_path, tmp_path / "response.text")
+    monkeypatch.setattr(sys, "argv", ["cli.py", "A box", "--config", str(config_path)])
+
+    def interrupted_call(system_prompt, user_prompt, provider):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "call_llm", interrupted_call)
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+
+    assert exit_info.value.code == 130
+
+
+def test_main_does_not_save_when_output_file_is_empty(tmp_path, monkeypatch):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        '{"provider": "mock", "system-prompt": "DUMMY", "output_file": ""}',
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["cli.py", "A box", "--config", str(config_path)])
+
+    cli.main()
+
+    assert not (tmp_path / "output").exists()
+
+
 def test_cli_execution_with_mock(tmp_path):
     # Create temporary mock config
     mock_config = tmp_path / "mock_config.json"

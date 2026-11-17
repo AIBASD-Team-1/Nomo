@@ -35,6 +35,15 @@ def test_call_llm_loads_env_file_next_to_config(tmp_path, monkeypatch):
     assert result == "test-key-from-env-file"
 
 
+def test_call_llm_uses_mock_when_config_file_is_missing(tmp_path):
+    missing_config_path = tmp_path / "missing.json"
+
+    result = llm_call.call_llm("system", "Build a box", str(missing_config_path))
+
+    assert "Mock LLM Response" in result
+    assert "Build a box" in result
+
+
 def test_openrouter_model_from_environment_overrides_config(monkeypatch):
     config = {
         "provider": "openrouter",
