@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -7,7 +8,12 @@ from pathlib import Path
 import pytest
 
 from llm import call as llm_call
-from llm.cli_provider import CliProvider
+from llm.cli_provider import (
+    CliProvider,
+    process_group_options,
+    running_processes,
+    stop_running_tools,
+)
 
 # A stand-in for an AI CLI: answers with what it received on stdin and as arguments
 ECHO_SCRIPT = (
@@ -49,6 +55,34 @@ def test_failing_tool_raises_with_its_error_output():
 
     with pytest.raises(RuntimeError, match="not signed in"):
         provider.call("system", "prompt")
+
+
+def test_command_is_required():
+    with pytest.raises(ValueError, match="needs a command"):
+        CliProvider(command=[])
+
+
+def test_tool_that_does_not_answer_in_time_is_stopped():
+    command = [sys.executable, "-c", "import time; time.sleep(30)"]
+    provider = CliProvider(command=command, timeout=0.5)
+
+    with pytest.raises(RuntimeError, match="did not answer within"):
+        provider.call("system", "prompt")
+
+
+def test_stop_running_tools_kills_tool_that_is_still_answering():
+    command = [sys.executable, "-c", "import time; time.sleep(30)"]
+    process = subprocess.Popen(command, **process_group_options())
+    running_processes.add(process)
+
+    try:
+        stop_running_tools()
+        exit_code = process.wait(timeout=10)
+    finally:
+        running_processes.discard(process)
+        process.kill()
+
+    assert exit_code != 0
 
 
 def test_missing_tool_raises():

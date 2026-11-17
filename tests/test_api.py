@@ -147,6 +147,16 @@ def test_prompt_endpoint_shows_provider_error_to_the_user(monkeypatch):
     assert data["result"] is None
 
 
+def test_server_shutdown_stops_running_tools(monkeypatch):
+    stop_calls = []
+    monkeypatch.setattr(main, "stop_running_tools", lambda: stop_calls.append(True))
+
+    with TestClient(main.app):
+        assert stop_calls == []
+
+    assert stop_calls == [True]
+
+
 def test_prompt_endpoint_rejects_missing_payload():
     """
     Verifies that the endpoint validates the request body and returns 422
