@@ -22,7 +22,7 @@ def write_mock_config(tmp_path, output_file):
 def test_load_config_returns_defaults_when_file_is_missing(tmp_path):
     config = cli.load_config(str(tmp_path / "missing.json"))
 
-    assert config["provider"] == "claude"
+    assert config["provider"] == "mock"
     assert config["output-file"] == "output/response.text"
 
 
