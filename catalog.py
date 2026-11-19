@@ -1,6 +1,8 @@
 """Template catalog and the prompt/response format the AI uses to build models from it."""
 
+import ast
 import json
+import operator
 import re
 from pathlib import Path
 from typing import Any, Self
@@ -58,6 +60,405 @@ class LLMResponse(BaseModel):
 
 class ResponseFormatError(ValueError):
     """Raised when an LLM response cannot be parsed or fails its schema."""
+
+
+SAFE_BINARY_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+SAFE_UNARY_OPERATORS = {
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+    ast.Not: operator.not_,
+}
+
+SAFE_COMPARE_OPERATORS = {
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+}
+
+
+def evaluate_ast_node(node: ast.AST, parameters: dict[str, float]) -> Any:
+    if isinstance(node, ast.Expression):
+        return evaluate_ast_node(node.body, parameters)
+
+    if isinstance(node, ast.Constant):
+        return node.value
+
+    if isinstance(node, ast.Name):
+        variable_name = node.id
+        if variable_name not in parameters:
+            raise ValueError(f"Unknown variable in rule check: '{variable_name}'")
+        return parameters[variable_name]
+
+    if isinstance(node, ast.UnaryOp):
+        operator_type = type(node.op)
+        if operator_type not in SAFE_UNARY_OPERATORS:
+            raise ValueError(f"Unsupported unary operator: {operator_type}")
+        unary_operation = SAFE_UNARY_OPERATORS[operator_type]
+        operand_value = evaluate_ast_node(node.operand, parameters)
+        return unary_operation(operand_value)
+
+    if isinstance(node, ast.BinOp):
+        operator_type = type(node.op)
+        if operator_type not in SAFE_BINARY_OPERATORS:
+            raise ValueError(f"Unsupported binary operator: {operator_type}")
+        binary_operation = SAFE_BINARY_OPERATORS[operator_type]
+        left_value = evaluate_ast_node(node.left, parameters)
+        right_value = evaluate_ast_node(node.right, parameters)
+        return binary_operation(left_value, right_value)
+
+    if isinstance(node, ast.BoolOp):
+        if isinstance(node.op, ast.And):
+            for value_node in node.values:
+                branch_result = evaluate_ast_node(value_node, parameters)
+                if not branch_result:
+                    return False
+            return True
+        if isinstance(node.op, ast.Or):
+            for value_node in node.values:
+                branch_result = evaluate_ast_node(value_node, parameters)
+                if branch_result:
+                    return True
+            return False
+
+    if isinstance(node, ast.Compare):
+        left_value = evaluate_ast_node(node.left, parameters)
+        current_left = left_value
+        for comparison_operator, comparator_node in zip(
+            node.ops, node.comparators, strict=True
+        ):
+            operator_type = type(comparison_operator)
+            if operator_type not in SAFE_COMPARE_OPERATORS:
+                raise ValueError(f"Unsupported comparison operator: {operator_type}")
+            comparison_function = SAFE_COMPARE_OPERATORS[operator_type]
+            right_value = evaluate_ast_node(comparator_node, parameters)
+            if not comparison_function(current_left, right_value):
+                return False
+            current_left = right_value
+        return True
+
+    raise ValueError(f"Unsupported syntax in rule condition: {type(node).__name__}")
+
+
+def evaluate_rule_condition(condition_text: str, parameters: dict[str, float]) -> bool:
+    parsed_ast = ast.parse(condition_text, mode="eval")
+    evaluation_result = evaluate_ast_node(parsed_ast, parameters)
+    return bool(evaluation_result)
+
+
+class Violation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instance_id: str
+    template_id: str
+    parameter: str | None = None
+    message: str
+
+    def format_message(self) -> str:
+        parameter_detail = (
+            f", parameter '{self.parameter}'" if self.parameter else ""
+        )
+        return (
+            f"Instance '{self.instance_id}' (template '{self.template_id}'"
+            f"{parameter_detail}): {self.message}"
+        )
+
+
+class ModelValidationError(ValueError):
+    """Raised when one or more model instances fail template validation."""
+
+    def __init__(self, violations: list[Violation]):
+        self.violations = violations
+        formatted_messages = [violation.format_message() for violation in violations]
+        combined_message = "; ".join(formatted_messages)
+        super().__init__(f"Model validation failed: {combined_message}")
+
+
+class TemplateParameter(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    unit: str = "mm"
+    min: float
+    max: float
+    default: float
+
+
+class TemplateRule(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    check: str
+    message: str
+    parameter: str | None = None
+
+
+class TemplateInstance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: StrictStr = Field(min_length=1)
+    template: StrictStr = Field(min_length=1)
+    parameters: dict[StrictStr, FiniteFloat]
+    position: Vector3
+    rotation: Vector3
+
+
+class Template(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    description: str = ""
+    parameters: dict[str, TemplateParameter] = Field(default_factory=dict)
+    rules: list[TemplateRule] = Field(default_factory=list)
+    origin: str = ""
+    base: str | None = None
+
+    def instantiate(
+        self,
+        instance_id: str,
+        parameters: dict[str, float] | None = None,
+        position: Vector3 | dict[str, float] | None = None,
+        rotation: Vector3 | dict[str, float] | None = None,
+    ) -> TemplateInstance:
+        parameters_dict = parameters or {}
+        position_vector = (
+            position
+            if isinstance(position, Vector3)
+            else Vector3.model_validate(position or {"x": 0.0, "y": 0.0, "z": 0.0})
+        )
+        rotation_vector = (
+            rotation
+            if isinstance(rotation, Vector3)
+            else Vector3.model_validate(rotation or {"x": 0.0, "y": 0.0, "z": 0.0})
+        )
+        catalog = {self.id: self}
+        instance_item = ModelInstance(
+            id=instance_id,
+            template=self.id,
+            parameters=parameters_dict,
+            position=position_vector,
+            rotation=rotation_vector,
+        )
+        instance, violations = instantiate_instance(instance_item, catalog)
+        if violations:
+            raise ModelValidationError(violations)
+        assert instance is not None
+        return instance
+
+
+def load_template_catalog(
+    templates_dir: Path = TEMPLATES_DIR,
+) -> dict[str, Template]:
+    """
+    Load every template from JSON and resolve template inheritance (base templates).
+    """
+    raw_templates: dict[str, Template] = {}
+    for template_path in sorted(templates_dir.glob("*.json")):
+        template_text = template_path.read_text(encoding="utf-8")
+        template_data = json.loads(template_text)
+        expected_id = template_path.stem
+        template_id = template_data.get("id")
+        if template_id != expected_id:
+            raise ValueError(
+                f"{template_path.name}: id must be '{expected_id}', got '{template_id}'"
+            )
+        template = Template.model_validate(template_data)
+        raw_templates[expected_id] = template
+
+    resolved_templates: dict[str, Template] = {}
+
+    def resolve_template(current_id: str, visited_ids: list[str]) -> Template:
+        if current_id in resolved_templates:
+            return resolved_templates[current_id]
+        if current_id not in raw_templates:
+            raise ValueError(f"Unknown template '{current_id}'.")
+        if current_id in visited_ids:
+            cycle_path = " -> ".join(visited_ids + [current_id])
+            raise ValueError(f"Circular template base dependency detected: {cycle_path}")
+
+        raw_template = raw_templates[current_id]
+        if not raw_template.base:
+            resolved_templates[current_id] = raw_template
+            return raw_template
+
+        base_template = resolve_template(raw_template.base, visited_ids + [current_id])
+
+        combined_parameters = dict(base_template.parameters)
+        for parameter_name, parameter_definition in raw_template.parameters.items():
+            combined_parameters[parameter_name] = parameter_definition
+
+        combined_rules = list(base_template.rules) + list(raw_template.rules)
+        origin = raw_template.origin or base_template.origin
+
+        resolved = Template(
+            id=raw_template.id,
+            description=raw_template.description or base_template.description,
+            parameters=combined_parameters,
+            rules=combined_rules,
+            origin=origin,
+            base=raw_template.base,
+        )
+        resolved_templates[current_id] = resolved
+        return resolved
+
+    for template_id in raw_templates:
+        resolve_template(template_id, [])
+
+    return resolved_templates
+
+
+def instantiate_instance(
+    instance_data: ModelInstance | dict[str, Any],
+    catalog: dict[str, Template],
+) -> tuple[TemplateInstance | None, list[Violation]]:
+    violations: list[Violation] = []
+
+    if isinstance(instance_data, ModelInstance):
+        instance_id = instance_data.id
+        template_id = instance_data.template
+        raw_parameters = instance_data.parameters
+        position = instance_data.position
+        rotation = instance_data.rotation
+    else:
+        instance_id = str(instance_data.get("id", ""))
+        template_id = str(instance_data.get("template", ""))
+        raw_parameters = instance_data.get("parameters", {})
+        position_data = instance_data.get("position", {})
+        rotation_data = instance_data.get("rotation", {})
+        position = Vector3.model_validate(position_data)
+        rotation = Vector3.model_validate(rotation_data)
+
+    if template_id not in catalog:
+        violation = Violation(
+            instance_id=instance_id,
+            template_id=template_id,
+            parameter=None,
+            message=f"Unknown template '{template_id}'.",
+        )
+        violations.append(violation)
+        return None, violations
+
+    template = catalog[template_id]
+    allowed_parameters = template.parameters
+
+    for parameter_name in raw_parameters:
+        if parameter_name not in allowed_parameters:
+            violation = Violation(
+                instance_id=instance_id,
+                template_id=template_id,
+                parameter=parameter_name,
+                message=(
+                    f"Unknown parameter '{parameter_name}' for template '{template_id}'."
+                ),
+            )
+            violations.append(violation)
+
+    resolved_parameters: dict[str, float] = {}
+    for parameter_name, parameter_definition in allowed_parameters.items():
+        if parameter_name in raw_parameters:
+            parameter_value = float(raw_parameters[parameter_name])
+        else:
+            parameter_value = float(parameter_definition.default)
+
+        minimum_value = parameter_definition.min
+        maximum_value = parameter_definition.max
+        if parameter_value < minimum_value:
+            violation = Violation(
+                instance_id=instance_id,
+                template_id=template_id,
+                parameter=parameter_name,
+                message=(
+                    f"Parameter '{parameter_name}' must be at least "
+                    f"{minimum_value}, got {parameter_value}."
+                ),
+            )
+            violations.append(violation)
+        elif parameter_value > maximum_value:
+            violation = Violation(
+                instance_id=instance_id,
+                template_id=template_id,
+                parameter=parameter_name,
+                message=(
+                    f"Parameter '{parameter_name}' must be at most "
+                    f"{maximum_value}, got {parameter_value}."
+                ),
+            )
+            violations.append(violation)
+
+        resolved_parameters[parameter_name] = parameter_value
+
+    if not violations:
+        for rule in template.rules:
+            try:
+                rule_satisfied = evaluate_rule_condition(
+                    rule.check, resolved_parameters
+                )
+            except Exception as rule_error:
+                violation = Violation(
+                    instance_id=instance_id,
+                    template_id=template_id,
+                    parameter=rule.parameter,
+                    message=f"Rule evaluation error: {rule_error}",
+                )
+                violations.append(violation)
+                continue
+
+            if not rule_satisfied:
+                violation = Violation(
+                    instance_id=instance_id,
+                    template_id=template_id,
+                    parameter=rule.parameter,
+                    message=rule.message,
+                )
+                violations.append(violation)
+
+    if violations:
+        return None, violations
+
+    instantiated_instance = TemplateInstance(
+        id=instance_id,
+        template=template_id,
+        parameters=resolved_parameters,
+        position=position,
+        rotation=rotation,
+    )
+    return instantiated_instance, []
+
+
+def instantiate_model(
+    model_data: list[ModelInstance] | list[dict[str, Any]],
+    catalog: dict[str, Template] | None = None,
+) -> list[TemplateInstance]:
+    """
+    Instantiate and validate every template in a model.
+
+    Resolves parameter defaults, checks parameter ranges and template rules.
+    Raises ModelValidationError if any violations occur.
+    """
+    active_catalog = catalog if catalog is not None else load_template_catalog()
+    instantiated_instances: list[TemplateInstance] = []
+    collected_violations: list[Violation] = []
+
+    for item in model_data:
+        instance, violations = instantiate_instance(item, active_catalog)
+        if violations:
+            collected_violations.extend(violations)
+        elif instance is not None:
+            instantiated_instances.append(instance)
+
+    if collected_violations:
+        raise ModelValidationError(collected_violations)
+
+    return instantiated_instances
 
 
 def load_templates(templates_dir: Path = TEMPLATES_DIR) -> list[dict[str, Any]]:

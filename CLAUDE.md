@@ -34,8 +34,9 @@ use one named intermediate variable per step.
   in a thread, returns `PromptResponse`. Serves `static/` and `/` → `static/index.html`.
 - `templates/` — one JSON file per template (`box`, `sphere`, `cylinder`); file name = `id`.
   Add a template by adding a file, no code change.
-- `catalog.py` — loads `templates/`, builds the system prompt from it, and `parse_reply`
-  which turns the AI's JSON answer into `reply` + `model` (→ `result`).
+- `catalog.py` — loads `templates/`, builds the system prompt from it, `parse_reply`
+  which turns the AI's JSON answer into `reply` + `model`, and instantiates templates with default values.
+- `layout.py` — generates 3D compound geometry from instantiated template instances; exports to ASCII STL and ISO 10303-21 STEP.
 - `cli.py` — argparse CLI over the same `call_llm` (prints the raw answer).
 - `llm/` — providers behind `LLMProvider.call(system_prompt, user_prompt) -> str`, picked in
   `llm/call.py:get_provider`: entries with `"type": "cli"` → `cli_provider.py` (runs an AI CLI
