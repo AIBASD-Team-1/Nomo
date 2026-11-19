@@ -1,7 +1,7 @@
 """Server-side 3D layout generation for parametric templates (STL and STEP export)."""
 
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from catalog import TemplateInstance, Vector3
@@ -87,9 +87,7 @@ class PlanarFace:
     ):
         self.vertices = vertices
         if normal is None and len(vertices) >= 3:
-            self.normal = compute_face_normal(
-                vertices[0], vertices[1], vertices[2]
-            )
+            self.normal = compute_face_normal(vertices[0], vertices[1], vertices[2])
         else:
             self.normal = normal or (0.0, 0.0, 1.0)
 
@@ -189,9 +187,15 @@ def transform_point(
     Rotation in degrees about fixed X, then Y, then Z by right-hand rule.
     Translation moves the template origin to position.
     """
-    rotation_x_deg = rotation.x if isinstance(rotation, Vector3) else rotation.get("x", 0.0)
-    rotation_y_deg = rotation.y if isinstance(rotation, Vector3) else rotation.get("y", 0.0)
-    rotation_z_deg = rotation.z if isinstance(rotation, Vector3) else rotation.get("z", 0.0)
+    rotation_x_deg = (
+        rotation.x if isinstance(rotation, Vector3) else rotation.get("x", 0.0)
+    )
+    rotation_y_deg = (
+        rotation.y if isinstance(rotation, Vector3) else rotation.get("y", 0.0)
+    )
+    rotation_z_deg = (
+        rotation.z if isinstance(rotation, Vector3) else rotation.get("z", 0.0)
+    )
 
     position_x = position.x if isinstance(position, Vector3) else position.get("x", 0.0)
     position_y = position.y if isinstance(position, Vector3) else position.get("y", 0.0)
@@ -416,12 +420,8 @@ def build_cylinder_solid(
         theta = 2.0 * math.pi * index / segments
         pos_x = radius * math.cos(theta)
         pos_y = radius * math.sin(theta)
-        bottom_points.append(
-            transform_point((pos_x, pos_y, 0.0), rotation, position)
-        )
-        top_points.append(
-            transform_point((pos_x, pos_y, height), rotation, position)
-        )
+        bottom_points.append(transform_point((pos_x, pos_y, 0.0), rotation, position))
+        top_points.append(transform_point((pos_x, pos_y, height), rotation, position))
 
     bottom_center = transform_point((0.0, 0.0, 0.0), rotation, position)
     top_center = transform_point((0.0, 0.0, height), rotation, position)
@@ -548,7 +548,9 @@ def build_sphere_solid(
             if ring_index == 0:
                 triangle = Triangle(bottom_left, bottom_right, top_right)
                 triangles.append(triangle)
-                faces.append(PlanarFace(vertices=[bottom_left, bottom_right, top_right]))
+                faces.append(
+                    PlanarFace(vertices=[bottom_left, bottom_right, top_right])
+                )
             elif ring_index == rings - 1:
                 triangle = Triangle(bottom_left, top_right, top_left)
                 triangles.append(triangle)
@@ -558,7 +560,9 @@ def build_sphere_solid(
                 triangle_2 = Triangle(bottom_left, top_right, top_left)
                 triangles.append(triangle_1)
                 triangles.append(triangle_2)
-                faces.append(PlanarFace(vertices=[bottom_left, bottom_right, top_right]))
+                faces.append(
+                    PlanarFace(vertices=[bottom_left, bottom_right, top_right])
+                )
                 faces.append(PlanarFace(vertices=[bottom_left, top_right, top_left]))
 
     volume = (4.0 / 3.0) * math.pi * radius * radius * radius
@@ -613,11 +617,11 @@ def generate_step_content(solids: list[SolidGeometry], model_name: str) -> str:
 
     Produces valid CONFIG_CONTROL_DESIGN / AP203 faceted solids.
     """
-    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    now_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
     lines: list[str] = [
         "ISO-10303-21;",
         "HEADER;",
-        f"FILE_DESCRIPTION(('Nomo CAD Model', 'Compound Solid Layout'),'2;1');",
+        "FILE_DESCRIPTION(('Nomo CAD Model', 'Compound Solid Layout'),'2;1');",
         f"FILE_NAME('{model_name}.step','{now_utc}',('Nomo User'),('TU Graz'),'Nomo STEP Generator','Nomo CAD','');",
         "FILE_SCHEMA(('CONFIG_CONTROL_DESIGN'));",
         "ENDSEC;",
@@ -696,14 +700,14 @@ def generate_step_content(solids: list[SolidGeometry], model_name: str) -> str:
 
             # 2. Poly loop
             poly_loop_id = next_id()
-            points_tuple_str = "(" + ",".join(f"#{pid}" for pid in vertex_point_ids) + ")"
+            points_tuple_str = (
+                "(" + ",".join(f"#{pid}" for pid in vertex_point_ids) + ")"
+            )
             lines.append(f"#{poly_loop_id} = POLY_LOOP('',{points_tuple_str});")
 
             # 3. Face outer bound
             bound_id = next_id()
-            lines.append(
-                f"#{bound_id} = FACE_OUTER_BOUND('',#{poly_loop_id},.T.);"
-            )
+            lines.append(f"#{bound_id} = FACE_OUTER_BOUND('',#{poly_loop_id},.T.);")
 
             # 4. Plane geometry
             normal_dir_id = next_id()
@@ -769,7 +773,9 @@ def generate_step_content(solids: list[SolidGeometry], model_name: str) -> str:
 
     # Shape representation collecting all solids
     shape_rep_id = next_id()
-    solids_tuple_str = "(" + ",".join(f"#{sid}" for sid in solid_ids) + ")" if solid_ids else "()"
+    solids_tuple_str = (
+        "(" + ",".join(f"#{sid}" for sid in solid_ids) + ")" if solid_ids else "()"
+    )
     lines.append(
         f"#{shape_rep_id} = ADVANCED_BREP_SHAPE_REPRESENTATION('{model_name}',{solids_tuple_str},#{geom_context_id});"
     )

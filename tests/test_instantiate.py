@@ -1,14 +1,10 @@
 import pytest
 
 from catalog import (
-    ModelInstance,
     ModelValidationError,
     Template,
     TemplateParameter,
     TemplateRule,
-    Vector3,
-    evaluate_rule_condition,
-    instantiate_instance,
     instantiate_model,
     load_template_catalog,
 )
@@ -164,9 +160,7 @@ def test_template_rule_violation_and_success():
             "length": TemplateParameter(
                 unit="mm", min=100.0, max=3000.0, default=1600.0
             ),
-            "width": TemplateParameter(
-                unit="mm", min=100.0, max=1500.0, default=900.0
-            ),
+            "width": TemplateParameter(unit="mm", min=100.0, max=1500.0, default=900.0),
             "height": TemplateParameter(unit="mm", min=10.0, max=100.0, default=27.0),
         },
         rules=[

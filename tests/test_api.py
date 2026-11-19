@@ -274,14 +274,18 @@ def test_download_stl_and_step_after_prompt(monkeypatch):
     stl_response = client.get("/api/model/stl")
     assert stl_response.status_code == 200
     assert "model/stl" in stl_response.headers.get("content-type", "")
-    assert "attachment; filename=\"model.stl\"" in stl_response.headers.get("content-disposition", "")
+    assert 'attachment; filename="model.stl"' in stl_response.headers.get(
+        "content-disposition", ""
+    )
     assert "solid nomo_layout" in stl_response.text
 
     # Test GET STEP
     step_response = client.get("/api/model/step")
     assert step_response.status_code == 200
     assert "model/step" in step_response.headers.get("content-type", "")
-    assert "attachment; filename=\"model.step\"" in step_response.headers.get("content-disposition", "")
+    assert 'attachment; filename="model.step"' in step_response.headers.get(
+        "content-disposition", ""
+    )
     assert "ISO-10303-21;" in step_response.text
     assert "MANIFOLD_SOLID_BREP" in step_response.text
 
