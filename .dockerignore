@@ -6,6 +6,7 @@
 !.python-version
 !main.py
 !catalog.py
+!layout.py
 !config.json
 !llm/
 !llm/**

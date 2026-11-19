@@ -10,8 +10,18 @@ EXPECTED_DOM_ELEMENT_IDS = [
     "prompt-input",
     "send-btn",
     "chat-messages",
+    "tab-3d",
     "tab-table",
     "tab-raw",
+    "three-view",
+    "three-placeholder",
+    "three-container",
+    "three-canvas",
+    "three-part-count",
+    "reset-cam-btn",
+    "toggle-wireframe-btn",
+    "download-stl-btn",
+    "download-step-btn",
     "json-table-view",
     "json-raw-view",
     "table-placeholder",
@@ -42,11 +52,21 @@ def test_index_contains_all_frontend_contract_element_ids():
         )
 
 
+def test_index_contains_threejs_script_and_3d_viewer():
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.text
+    assert "three.min.js" in html
+    assert "3D View" in html
+    assert 'id="three-canvas"' in html
+
+
 @pytest.mark.parametrize(
     "path, expected_mime",
     [
         ("/static/style.css", "text/css"),
         ("/static/app.js", "javascript"),
+        ("/static/three.min.js", "javascript"),
     ],
 )
 def test_static_files_delivery(path: str, expected_mime: str):
@@ -164,3 +184,123 @@ def test_prompt_endpoint_rejects_missing_payload():
     """
     response = client.post("/api/prompt", json={})
     assert response.status_code == 422
+
+
+def test_prompt_endpoint_instantiates_templates_and_populates_defaults(monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "call_llm",
+        lambda system_prompt, user_prompt, config_path: (
+            '{"reply": "A box", "model": [{"id": "box_1", "template": "box", '
+            '"parameters": {"length": 250}, '
+            '"position": {"x": 10, "y": 20, "z": 0}, "rotation": {"x": 0, "y": 0, "z": 0}}]}'
+        ),
+    )
+    response = client.post("/api/prompt", json={"prompt": "Box 250 mm"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert len(data["result"]) == 1
+    instantiated_instance = data["result"][0]
+    assert instantiated_instance["id"] == "box_1"
+    assert instantiated_instance["template"] == "box"
+    assert instantiated_instance["parameters"] == {
+        "length": 250.0,
+        "width": 100.0,
+        "height": 100.0,
+    }
+
+
+def test_prompt_endpoint_retries_on_model_validation_error(monkeypatch):
+    user_prompts = []
+    answers = iter(
+        [
+            (
+                '{"reply": "bad", "model": [{"id": "box_1", "template": "box", '
+                '"parameters": {"unknown_param": 10}, '
+                '"position": {"x": 0, "y": 0, "z": 0}, "rotation": {"x": 0, "y": 0, "z": 0}}]}'
+            ),
+            (
+                '{"reply": "fixed", "model": [{"id": "box_1", "template": "box", '
+                '"parameters": {"length": 150}, '
+                '"position": {"x": 0, "y": 0, "z": 0}, "rotation": {"x": 0, "y": 0, "z": 0}}]}'
+            ),
+        ]
+    )
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        user_prompts.append(user_prompt)
+        return next(answers)
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    response = client.post("/api/prompt", json={"prompt": "Box with param"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["reply"] == "fixed"
+    assert len(user_prompts) == 2
+    assert "Validation error" in user_prompts[1]
+    assert "Unknown parameter 'unknown_param'" in user_prompts[1]
+
+
+def test_download_endpoints_return_404_when_no_model(monkeypatch):
+    main.active_layout = None
+    stl_response = client.get("/api/model/stl")
+    assert stl_response.status_code == 404
+
+    step_response = client.get("/api/model/step")
+    assert step_response.status_code == 404
+
+
+def test_download_stl_and_step_after_prompt(monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "call_llm",
+        lambda system_prompt, user_prompt, config_path: (
+            '{"reply": "A box", "model": [{"id": "box_1", "template": "box", '
+            '"parameters": {"length": 120, "width": 80, "height": 40}, '
+            '"position": {"x": 0, "y": 0, "z": 0}, "rotation": {"x": 0, "y": 0, "z": 0}}]}'
+        ),
+    )
+    prompt_response = client.post("/api/prompt", json={"prompt": "Make a box"})
+    assert prompt_response.status_code == 200
+    data = prompt_response.json()
+    assert data["layout"] is not None
+    assert data["layout"]["solid_count"] == 1
+    assert data["layout"]["stl_url"] == "/api/model/stl"
+    assert data["layout"]["step_url"] == "/api/model/step"
+
+    # Test GET STL
+    stl_response = client.get("/api/model/stl")
+    assert stl_response.status_code == 200
+    assert "model/stl" in stl_response.headers.get("content-type", "")
+    assert "attachment; filename=\"model.stl\"" in stl_response.headers.get("content-disposition", "")
+    assert "solid nomo_layout" in stl_response.text
+
+    # Test GET STEP
+    step_response = client.get("/api/model/step")
+    assert step_response.status_code == 200
+    assert "model/step" in step_response.headers.get("content-type", "")
+    assert "attachment; filename=\"model.step\"" in step_response.headers.get("content-disposition", "")
+    assert "ISO-10303-21;" in step_response.text
+    assert "MANIFOLD_SOLID_BREP" in step_response.text
+
+
+def test_export_endpoints_with_direct_post():
+    payload = [
+        {
+            "id": "direct_box",
+            "template": "box",
+            "parameters": {"length": 100.0, "width": 50.0, "height": 25.0},
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "rotation": {"x": 0.0, "y": 0.0, "z": 0.0},
+        }
+    ]
+    stl_response = client.post("/api/model/stl", json=payload)
+    assert stl_response.status_code == 200
+    assert "solid nomo_layout" in stl_response.text
+
+    step_response = client.post("/api/model/step", json=payload)
+    assert step_response.status_code == 200
+    assert "ISO-10303-21;" in step_response.text
+    assert "MANIFOLD_SOLID_BREP('direct_box'" in step_response.text

@@ -12,7 +12,7 @@ RUN uv sync --locked --no-dev --no-cache --python /usr/local/bin/python \
     && groupadd --system nomo \
     && useradd --system --gid nomo nomo
 
-COPY main.py catalog.py ./
+COPY main.py catalog.py layout.py ./
 COPY config.json ./
 COPY llm ./llm
 COPY templates ./templates

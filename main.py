@@ -6,12 +6,19 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from catalog import ResponseFormatError, build_system_prompt, parse_reply
+from catalog import (
+    ModelValidationError,
+    ResponseFormatError,
+    build_system_prompt,
+    instantiate_model,
+    parse_reply,
+)
+from layout import ModelLayout, generate_layout
 from llm import call_llm
 from llm.cli_provider import stop_running_tools
 
@@ -46,6 +53,19 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Nomo CAD Web Interface", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def add_no_cache_headers_for_static(request: Request, call_next: Any) -> Response:
+    response: Response = await call_next(request)
+    request_path = request.url.path
+    is_root_path = request_path == "/"
+    is_static_path = request_path.startswith("/static/")
+    if is_root_path or is_static_path:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 class PromptRequest(BaseModel):
     prompt: str
 
@@ -64,6 +84,10 @@ class PromptResponse(BaseModel):
     type: str
     reply: str
     result: Any | None = None
+    layout: dict[str, Any] | None = None
+
+
+active_layout: ModelLayout | None = None
 
 
 def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:
@@ -128,13 +152,31 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
             logger.warning("The AI provider failed: %s", error)
             return create_provider_error_response(request.prompt, error)
         try:
-            reply, model = parse_reply(answer_text)
-        except ResponseFormatError as error:
+            reply, raw_model = parse_reply(answer_text)
+            instantiated_instances = instantiate_model(raw_model)
+            model_result = [
+                instance.model_dump(mode="json")
+                for instance in instantiated_instances
+            ]
+        except (ResponseFormatError, ModelValidationError) as error:
             if attempt_number < MAX_LLM_ATTEMPTS - 1:
                 current_user_prompt = create_invalid_response_prompt(
                     request.prompt, answer_text, str(error)
                 )
             continue
+
+        if instantiated_instances:
+            current_layout = generate_layout(instantiated_instances)
+            global active_layout
+            active_layout = current_layout
+            layout_details = {
+                "solid_count": len(current_layout.solids),
+                "bounding_box": current_layout.bounding_box.to_dict(),
+                "stl_url": "/api/model/stl",
+                "step_url": "/api/model/step",
+            }
+        else:
+            layout_details = None
 
         return PromptResponse(
             status="ok",
@@ -143,7 +185,8 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
             schema_version=SCHEMA_VERSION,
             type=RESPONSE_TYPE,
             reply=reply,
-            result=model,
+            result=model_result,
+            layout=layout_details,
         )
 
     return PromptResponse(
@@ -154,6 +197,67 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
         type=RESPONSE_TYPE,
         reply=INVALID_RESPONSE_MESSAGE,
         result=None,
+        layout=None,
+    )
+
+
+@app.get("/api/model/stl")
+async def download_model_stl() -> Response:
+    """Download the current layout as an ASCII STL file."""
+    if active_layout is None or not active_layout.solids:
+        raise HTTPException(
+            status_code=404, detail="No 3D model layout generated yet."
+        )
+    stl_content = active_layout.to_stl()
+    return Response(
+        content=stl_content,
+        media_type="model/stl",
+        headers={"Content-Disposition": 'attachment; filename="model.stl"'},
+    )
+
+
+@app.get("/api/model/step")
+async def download_model_step() -> Response:
+    """Download the current layout as an ISO 10303-21 STEP file."""
+    if active_layout is None or not active_layout.solids:
+        raise HTTPException(
+            status_code=404, detail="No 3D model layout generated yet."
+        )
+    step_content = active_layout.to_step()
+    return Response(
+        content=step_content,
+        media_type="model/step",
+        headers={"Content-Disposition": 'attachment; filename="model.step"'},
+    )
+
+
+@app.post("/api/model/stl")
+async def export_stl_from_instances(
+    instances: list[dict[str, Any]],
+) -> Response:
+    """Export arbitrary model instances directly to an STL file."""
+    instantiated_instances = instantiate_model(instances)
+    model_layout = generate_layout(instantiated_instances)
+    stl_content = model_layout.to_stl()
+    return Response(
+        content=stl_content,
+        media_type="model/stl",
+        headers={"Content-Disposition": 'attachment; filename="model.stl"'},
+    )
+
+
+@app.post("/api/model/step")
+async def export_step_from_instances(
+    instances: list[dict[str, Any]],
+) -> Response:
+    """Export arbitrary model instances directly to an ISO 10303-21 STEP file."""
+    instantiated_instances = instantiate_model(instances)
+    model_layout = generate_layout(instantiated_instances)
+    step_content = model_layout.to_step()
+    return Response(
+        content=step_content,
+        media_type="model/step",
+        headers={"Content-Disposition": 'attachment; filename="model.step"'},
     )
 
 

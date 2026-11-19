@@ -4,7 +4,8 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Nomo - CAD Prompt Web App</title>
-        <link rel="stylesheet" href="/static/style.css" />
+        <link rel="stylesheet" href="/static/style.css?v=4" />
+        <script src="/static/three.min.js"></script>
         <script>
             (function () {
                 var theme = "dark";
@@ -118,17 +119,61 @@
             <section class="panel output-panel" id="output-panel">
                 <div class="panel-header">
                     <h2>Output Panel</h2>
-                    <div class="tab-controls">
-                        <button type="button" class="tab-btn active" id="tab-table">
-                            JSON Table
-                        </button>
-                        <button type="button" class="tab-btn" id="tab-raw">Raw JSON</button>
+                    <div class="panel-actions">
+                        <div class="download-controls">
+                            <a id="download-stl-btn" class="secondary-btn hidden" href="/api/model/stl" download="model.stl">Download STL</a>
+                            <a id="download-step-btn" class="secondary-btn hidden" href="/api/model/step" download="model.step">Download STEP</a>
+                        </div>
+                        <div class="tab-controls">
+                            <button type="button" class="tab-btn active" id="tab-3d">
+                                3D View
+                            </button>
+                            <button type="button" class="tab-btn" id="tab-table">
+                                JSON Table
+                            </button>
+                            <button type="button" class="tab-btn" id="tab-raw">Raw JSON</button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="output-content">
+                    <!-- 3D Model View -->
+                    <div id="three-view" class="view-section active">
+                        <div id="three-placeholder" class="empty-state">
+                            <div class="empty-icon">🧊</div>
+                            <p>
+                                No 3D model yet. Submit a prompt in the chat window to view the
+                                3D model.
+                            </p>
+                        </div>
+                        <div id="three-container" class="three-container hidden">
+                            <div id="three-canvas" class="three-canvas"></div>
+                            <div class="three-overlay">
+                                <span id="three-part-count" class="badge">0 parts</span>
+                                <div class="three-toolbar">
+                                    <button
+                                        type="button"
+                                        id="reset-cam-btn"
+                                        class="secondary-btn"
+                                        title="Reset View"
+                                    >
+                                        Reset View
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="toggle-wireframe-btn"
+                                        class="secondary-btn"
+                                        title="Toggle Edges"
+                                    >
+                                        Toggle Edges
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- JSON Table View -->
-                    <div id="json-table-view" class="view-section active">
+                    <div id="json-table-view" class="view-section hidden">
                         <div id="table-placeholder" class="empty-state">
                             <div class="empty-icon">📊</div>
                             <p>
@@ -169,6 +214,6 @@
             </section>
         </main>
 
-        <script src="/static/app.js"></script>
+        <script src="/static/app.js?v=4"></script>
     </body>
 </html>
