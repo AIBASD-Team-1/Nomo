@@ -166,9 +166,7 @@ class Violation(BaseModel):
     message: str
 
     def format_message(self) -> str:
-        parameter_detail = (
-            f", parameter '{self.parameter}'" if self.parameter else ""
-        )
+        parameter_detail = f", parameter '{self.parameter}'" if self.parameter else ""
         return (
             f"Instance '{self.instance_id}' (template '{self.template_id}'"
             f"{parameter_detail}): {self.message}"
@@ -283,7 +281,9 @@ def load_template_catalog(
             raise ValueError(f"Unknown template '{current_id}'.")
         if current_id in visited_ids:
             cycle_path = " -> ".join(visited_ids + [current_id])
-            raise ValueError(f"Circular template base dependency detected: {cycle_path}")
+            raise ValueError(
+                f"Circular template base dependency detected: {cycle_path}"
+            )
 
         raw_template = raw_templates[current_id]
         if not raw_template.base:

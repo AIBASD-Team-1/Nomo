@@ -1,10 +1,7 @@
 import math
-import pytest
 
 from catalog import TemplateInstance, Vector3
 from layout import (
-    BoundingBox,
-    SolidGeometry,
     compute_face_normal,
     generate_layout,
     transform_point,

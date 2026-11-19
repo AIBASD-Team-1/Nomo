@@ -155,8 +155,7 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
             reply, raw_model = parse_reply(answer_text)
             instantiated_instances = instantiate_model(raw_model)
             model_result = [
-                instance.model_dump(mode="json")
-                for instance in instantiated_instances
+                instance.model_dump(mode="json") for instance in instantiated_instances
             ]
         except (ResponseFormatError, ModelValidationError) as error:
             if attempt_number < MAX_LLM_ATTEMPTS - 1:
@@ -205,9 +204,7 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
 async def download_model_stl() -> Response:
     """Download the current layout as an ASCII STL file."""
     if active_layout is None or not active_layout.solids:
-        raise HTTPException(
-            status_code=404, detail="No 3D model layout generated yet."
-        )
+        raise HTTPException(status_code=404, detail="No 3D model layout generated yet.")
     stl_content = active_layout.to_stl()
     return Response(
         content=stl_content,
@@ -220,9 +217,7 @@ async def download_model_stl() -> Response:
 async def download_model_step() -> Response:
     """Download the current layout as an ISO 10303-21 STEP file."""
     if active_layout is None or not active_layout.solids:
-        raise HTTPException(
-            status_code=404, detail="No 3D model layout generated yet."
-        )
+        raise HTTPException(status_code=404, detail="No 3D model layout generated yet.")
     step_content = active_layout.to_step()
     return Response(
         content=step_content,

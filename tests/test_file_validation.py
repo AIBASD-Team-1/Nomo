@@ -4,8 +4,6 @@ import math
 import re
 from pathlib import Path
 
-import pytest
-
 from catalog import TemplateInstance, Vector3
 from layout import generate_layout
 
@@ -73,7 +71,9 @@ def parse_ascii_stl(stl_content: str) -> dict:
             )
         elif line == "endloop":
             assert in_loop, "endloop without outer loop"
-            assert len(current_vertices) == 3, f"Facet must have exactly 3 vertices, got {len(current_vertices)}"
+            assert len(current_vertices) == 3, (
+                f"Facet must have exactly 3 vertices, got {len(current_vertices)}"
+            )
             in_loop = False
         elif line == "endfacet":
             assert in_facet, "endfacet without facet normal"
@@ -109,7 +109,9 @@ def parse_step_file(step_content: str) -> dict:
     # Extract DATA section
     data_start = step_content.find("DATA;")
     data_end = step_content.find("ENDSEC;", data_start)
-    assert data_start != -1 and data_end != -1, "DATA section must be terminated with ENDSEC;"
+    assert data_start != -1 and data_end != -1, (
+        "DATA section must be terminated with ENDSEC;"
+    )
     data_section = step_content[data_start + len("DATA;") : data_end]
 
     # Parse entities: #ID = ...;
@@ -165,7 +167,9 @@ def test_stl_file_exact_structure_and_normals():
     for facet in facets:
         normal = facet["normal"]
         normal_magnitude = math.sqrt(sum(component**2 for component in normal))
-        assert math.isclose(normal_magnitude, 1.0, rel_tol=1e-4), "Normal must be normalized unit vector"
+        assert math.isclose(normal_magnitude, 1.0, rel_tol=1e-4), (
+            "Normal must be normalized unit vector"
+        )
 
         v1, v2, v3 = facet["vertices"]
         # Vertices must not be degenerate
@@ -185,7 +189,9 @@ def test_stl_file_exact_structure_and_normals():
             + normal[1] * cross_product[1]
             + normal[2] * cross_product[2]
         )
-        assert dot_product > 0.0, "Facet normal must point in direction of right-hand vertex winding"
+        assert dot_product > 0.0, (
+            "Facet normal must point in direction of right-hand vertex winding"
+        )
 
 
 def test_step_file_referential_integrity():
@@ -217,7 +223,9 @@ def test_step_file_referential_integrity():
 
     # Referential integrity check: every referenced ID must be a defined entity ID
     for referenced_id in referenced_ids:
-        assert referenced_id in entities, f"Dangling reference: #{referenced_id} is referenced but not defined!"
+        assert referenced_id in entities, (
+            f"Dangling reference: #{referenced_id} is referenced but not defined!"
+        )
 
     # Count solids
     solid_entities = [
@@ -276,9 +284,7 @@ def test_table_step_and_stl_boundary_coordinates():
     assert len(parsed_stl["facets"]) == 60, "5 boxes * 12 triangles = 60 triangles"
 
     stl_all_vertices = [
-        vertex
-        for facet in parsed_stl["facets"]
-        for vertex in facet["vertices"]
+        vertex for facet in parsed_stl["facets"] for vertex in facet["vertices"]
     ]
     stl_min_x = min(vertex[0] for vertex in stl_all_vertices)
     stl_max_x = max(vertex[0] for vertex in stl_all_vertices)
@@ -300,9 +306,13 @@ def test_table_step_and_stl_boundary_coordinates():
     entities = parsed_step["entities"]
 
     step_points = [
-        [float(coordinate) for coordinate in re.findall(r"[-+]?\d*\.?\d+", entity["raw_body"])]
+        [
+            float(coordinate)
+            for coordinate in re.findall(r"[-+]?\d*\.?\d+", entity["raw_body"])
+        ]
         for entity in entities.values()
-        if entity["type"] == "CARTESIAN_POINT" and "CARTESIAN_POINT('',(" in entity["raw_body"]
+        if entity["type"] == "CARTESIAN_POINT"
+        and "CARTESIAN_POINT('',(" in entity["raw_body"]
     ]
     assert len(step_points) >= 30, "Table must have at least 30 point definitions"
 
@@ -370,7 +380,8 @@ def test_empty_layout_generates_valid_empty_files():
     parsed_step = parse_step_file(step_content)
     assert len(parsed_step["entities"]) > 0
     solid_ids = [
-        eid for eid, entity in parsed_step["entities"].items()
+        eid
+        for eid, entity in parsed_step["entities"].items()
         if entity["type"] == "MANIFOLD_SOLID_BREP"
     ]
     assert len(solid_ids) == 0
