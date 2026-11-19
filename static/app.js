@@ -328,7 +328,10 @@ document.addEventListener("DOMContentLoaded", () => {
         camera = new THREE.PerspectiveCamera(45, width / height, 1, 100000);
 
         try {
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                powerPreference: "high-performance",
+            });
         } catch (webglError) {
             console.error("WebGL error:", webglError);
             return;
@@ -396,7 +399,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const backgroundColor = theme === "light" ? 0xf8fafc : 0x0f172a;
         scene.background = new THREE.Color(backgroundColor);
         if (gridHelper) {
-            const currentSize = gridHelper.geometry && gridHelper.geometry.parameters ? gridHelper.geometry.parameters.size : 2000;
+            const currentSize =
+                gridHelper.geometry && gridHelper.geometry.parameters
+                    ? gridHelper.geometry.parameters.size
+                    : 2000;
             createGrid(currentSize, theme);
         }
     }
@@ -414,9 +420,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateCameraFromSpherical() {
         if (!camera || !camera.position || !cameraTarget) return;
-        const x = cameraTarget.x + cameraSpherical.radius * Math.sin(cameraSpherical.phi) * Math.sin(cameraSpherical.theta);
+        const x =
+            cameraTarget.x +
+            cameraSpherical.radius *
+                Math.sin(cameraSpherical.phi) *
+                Math.sin(cameraSpherical.theta);
         const y = cameraTarget.y + cameraSpherical.radius * Math.cos(cameraSpherical.phi);
-        const z = cameraTarget.z + cameraSpherical.radius * Math.sin(cameraSpherical.phi) * Math.cos(cameraSpherical.theta);
+        const z =
+            cameraTarget.z +
+            cameraSpherical.radius *
+                Math.sin(cameraSpherical.phi) *
+                Math.cos(cameraSpherical.theta);
         camera.position.set(x, y, z);
         camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
     }
@@ -474,7 +488,10 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 // Orbit rotation
                 cameraSpherical.theta -= deltaX * 0.008;
-                cameraSpherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, cameraSpherical.phi - deltaY * 0.008));
+                cameraSpherical.phi = Math.max(
+                    0.05,
+                    Math.min(Math.PI - 0.05, cameraSpherical.phi - deltaY * 0.008),
+                );
             }
             updateCameraFromSpherical();
         });
@@ -484,10 +501,13 @@ document.addEventListener("DOMContentLoaded", () => {
             (e) => {
                 e.preventDefault();
                 const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
-                cameraSpherical.radius = Math.max(20, Math.min(50000, cameraSpherical.radius * zoomFactor));
+                cameraSpherical.radius = Math.max(
+                    20,
+                    Math.min(50000, cameraSpherical.radius * zoomFactor),
+                );
                 updateCameraFromSpherical();
             },
-            { passive: false }
+            { passive: false },
         );
 
         // Touch support
@@ -511,7 +531,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const deltaY = e.touches[0].clientY - previousPointer.y;
                 previousPointer = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 cameraSpherical.theta -= deltaX * 0.008;
-                cameraSpherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, cameraSpherical.phi - deltaY * 0.008));
+                cameraSpherical.phi = Math.max(
+                    0.05,
+                    Math.min(Math.PI - 0.05, cameraSpherical.phi - deltaY * 0.008),
+                );
                 updateCameraFromSpherical();
             } else if (e.touches.length === 2) {
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -519,7 +542,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (touchStartDist > 0) {
                     const ratio = touchStartDist / dist;
-                    cameraSpherical.radius = Math.max(20, Math.min(50000, cameraSpherical.radius * ratio));
+                    cameraSpherical.radius = Math.max(
+                        20,
+                        Math.min(50000, cameraSpherical.radius * ratio),
+                    );
                     updateCameraFromSpherical();
                     touchStartDist = dist;
                 }

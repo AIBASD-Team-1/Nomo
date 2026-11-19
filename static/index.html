@@ -121,16 +121,26 @@
                     <h2>Output Panel</h2>
                     <div class="panel-actions">
                         <div class="download-controls">
-                            <a id="download-stl-btn" class="secondary-btn hidden" href="/api/model/stl" download="model.stl">Download STL</a>
-                            <a id="download-step-btn" class="secondary-btn hidden" href="/api/model/step" download="model.step">Download STEP</a>
+                            <a
+                                id="download-stl-btn"
+                                class="secondary-btn hidden"
+                                href="/api/model/stl"
+                                download="model.stl"
+                                >Download STL</a
+                            >
+                            <a
+                                id="download-step-btn"
+                                class="secondary-btn hidden"
+                                href="/api/model/step"
+                                download="model.step"
+                                >Download STEP</a
+                            >
                         </div>
                         <div class="tab-controls">
                             <button type="button" class="tab-btn active" id="tab-3d">
                                 3D View
                             </button>
-                            <button type="button" class="tab-btn" id="tab-table">
-                                JSON Table
-                            </button>
+                            <button type="button" class="tab-btn" id="tab-table">JSON Table</button>
                             <button type="button" class="tab-btn" id="tab-raw">Raw JSON</button>
                         </div>
                     </div>
@@ -142,8 +152,8 @@
                         <div id="three-placeholder" class="empty-state">
                             <div class="empty-icon">🧊</div>
                             <p>
-                                No 3D model yet. Submit a prompt in the chat window to view the
-                                3D model.
+                                No 3D model yet. Submit a prompt in the chat window to view the 3D
+                                model.
                             </p>
                         </div>
                         <div id="three-container" class="three-container hidden">
