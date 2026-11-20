@@ -4,12 +4,12 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, StrictStr
 
 from catalog import (
     ModelValidationError,
@@ -66,8 +66,17 @@ async def add_no_cache_headers_for_static(request: Request, call_next: Any) -> R
     return response
 
 
+class ConversationMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    role: Literal["user", "assistant"]
+    content: StrictStr
+
+
 class PromptRequest(BaseModel):
     prompt: str
+    conversation: list[ConversationMessage] = Field(default_factory=list)
+    current_model: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class PromptResponse(BaseModel):
@@ -130,8 +139,39 @@ def create_invalid_response_prompt(
     )
 
 
+def create_contextual_user_prompt(
+    prompt: str,
+    conversation: list[ConversationMessage],
+    current_model: list[dict[str, Any]],
+) -> str:
+    """Include the prior chat and current design when asking the AI to refine a model."""
+    if not conversation and not current_model:
+        return prompt
+
+    context = {
+        "conversation": [message.model_dump(mode="json") for message in conversation],
+        "current_model": current_model,
+    }
+    return (
+        "Use this prior conversation and current model as context for the new request. "
+        "The current model is the complete design to refine.\n\n"
+        f"{json.dumps(context, indent=2, ensure_ascii=False)}\n\n"
+        f"New user request:\n{prompt}"
+    )
+
+
 @app.post("/api/prompt", response_model=PromptResponse, response_model_by_alias=True)
 async def process_prompt(request: PromptRequest) -> PromptResponse:
+    global active_layout
+
+    try:
+        current_model_instances = instantiate_model(request.current_model)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    current_model = [
+        instance.model_dump(mode="json") for instance in current_model_instances
+    ]
+
     config_path = BASE_DIR / "config.json"
     with config_path.open("r", encoding="utf-8") as config_file:
         config = json.load(config_file)
@@ -139,7 +179,10 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
         "system_prompt", "You are Nomo CAD assistant."
     )
     full_system_prompt = build_system_prompt(system_prompt)
-    current_user_prompt = request.prompt
+    original_user_prompt = create_contextual_user_prompt(
+        request.prompt, request.conversation, current_model
+    )
+    current_user_prompt = original_user_prompt
 
     for attempt_number in range(MAX_LLM_ATTEMPTS):
         try:
@@ -160,13 +203,12 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
         except (ResponseFormatError, ModelValidationError) as error:
             if attempt_number < MAX_LLM_ATTEMPTS - 1:
                 current_user_prompt = create_invalid_response_prompt(
-                    request.prompt, answer_text, str(error)
+                    original_user_prompt, answer_text, str(error)
                 )
             continue
 
         if instantiated_instances:
             current_layout = generate_layout(instantiated_instances)
-            global active_layout
             active_layout = current_layout
             layout_details = {
                 "solid_count": len(current_layout.solids),
@@ -175,6 +217,7 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
                 "step_url": "/api/model/step",
             }
         else:
+            active_layout = None
             layout_details = None
 
         return PromptResponse(

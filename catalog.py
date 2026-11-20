@@ -500,6 +500,9 @@ Answer with ONE JSON object and nothing else, matching this exact structure. Do 
 Every instance must contain all five fields shown; `parameters` may be empty. `position` and `rotation`
 must each contain numeric `x`, `y`, and `z` values only. `reply` must be a string and `model` must be
 an array. No fit is still a valid response: explain it in `reply` and return `"model": []`.
+When the user message includes a prior conversation and current model, use them to interpret the new
+request and refine that design. Return the complete updated model, including unchanged instances that
+should remain in the design. Replace the design only when the user asks to start over.
 """
 
 

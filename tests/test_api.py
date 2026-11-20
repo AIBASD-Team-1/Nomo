@@ -131,6 +131,102 @@ def test_prompt_endpoint_retries_invalid_answer_with_validation_error(monkeypatc
     assert "id" in user_prompts[1]
 
 
+def test_prompt_endpoint_includes_conversation_and_current_model(monkeypatch):
+    user_prompts = []
+    current_model = [
+        {
+            "id": "box_1",
+            "template": "box",
+            "parameters": {"length": 100, "width": 100, "height": 100},
+            "position": {"x": 0, "y": 0, "z": 0},
+            "rotation": {"x": 0, "y": 0, "z": 0},
+        }
+    ]
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        user_prompts.append(user_prompt)
+        return '{"reply": "Made it longer", "model": []}'
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    response = client.post(
+        "/api/prompt",
+        json={
+            "prompt": "Make it longer",
+            "conversation": [
+                {"role": "user", "content": "Make a 100 mm box"},
+                {"role": "assistant", "content": "I made a box"},
+            ],
+            "current_model": current_model,
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Make a 100 mm box" in user_prompts[0]
+    assert "I made a box" in user_prompts[0]
+    assert '"length": 100.0' in user_prompts[0]
+    assert "New user request:\nMake it longer" in user_prompts[0]
+
+
+def test_prompt_endpoint_rejects_invalid_current_model_without_calling_ai(monkeypatch):
+    def unexpected_call_llm(system_prompt, user_prompt, config_path):
+        pytest.fail("The AI should not be called with an invalid current model.")
+
+    monkeypatch.setattr(main, "call_llm", unexpected_call_llm)
+    response = client.post(
+        "/api/prompt",
+        json={
+            "prompt": "Make it longer",
+            "current_model": [
+                {
+                    "id": "box_1",
+                    "template": "unknown",
+                    "parameters": {},
+                    "position": {"x": 0, "y": 0, "z": 0},
+                    "rotation": {"x": 0, "y": 0, "z": 0},
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Unknown template 'unknown'" in response.json()["detail"]
+
+
+def test_prompt_endpoint_clears_previous_layout_when_refinement_removes_model(
+    monkeypatch,
+):
+    main.active_layout = None
+    answers = iter(
+        [
+            (
+                '{"reply": "A box", "model": [{"id": "box_1", "template": "box", '
+                '"parameters": {}, "position": {"x": 0, "y": 0, "z": 0}, '
+                '"rotation": {"x": 0, "y": 0, "z": 0}}]}'
+            ),
+            '{"reply": "Removed the box", "model": []}',
+        ]
+    )
+    monkeypatch.setattr(
+        main, "call_llm", lambda system_prompt, user_prompt, config_path: next(answers)
+    )
+
+    first_response = client.post("/api/prompt", json={"prompt": "Make a box"})
+    assert first_response.json()["layout"] is not None
+
+    second_response = client.post(
+        "/api/prompt",
+        json={
+            "prompt": "Remove it",
+            "current_model": first_response.json()["result"],
+        },
+    )
+
+    assert second_response.status_code == 200
+    assert second_response.json()["result"] == []
+    assert second_response.json()["layout"] is None
+    assert client.get("/api/model/stl").status_code == 404
+
+
 def test_prompt_endpoint_returns_error_after_ten_invalid_answers(monkeypatch):
     invalid_responses = []
 

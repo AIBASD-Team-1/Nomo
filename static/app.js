@@ -80,6 +80,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const toggleWireframeBtn = document.getElementById("toggle-wireframe-btn");
 
     let currentJsonResponse = null;
+    let currentModel = [];
+    const conversationHistory = [];
 
     // Tab switching
     function switchTab(activeTab) {
@@ -156,6 +158,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const promptText = promptInput.value.trim();
         if (!promptText) return;
 
+        const previousConversation = conversationHistory.slice();
+        conversationHistory.push({ role: "user", content: promptText });
         appendMessage("user", promptText);
         promptInput.value = "";
         setLoading(true);
@@ -164,7 +168,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch("/api/prompt", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: promptText }),
+                body: JSON.stringify({
+                    prompt: promptText,
+                    conversation: previousConversation,
+                    current_model: currentModel,
+                }),
             });
 
             if (!response.ok) {
@@ -176,6 +184,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const replyText = data.reply || data.message || "Prompt received.";
             appendMessage("assistant", replyText);
+            conversationHistory.push({ role: "assistant", content: replyText });
+            if (data.status === "ok" && Array.isArray(data.result)) {
+                currentModel = data.result;
+            }
 
             renderJsonTable(data);
             render3DModel(data);
