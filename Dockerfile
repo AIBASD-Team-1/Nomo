@@ -8,7 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never
 
 COPY pyproject.toml uv.lock .python-version ./
-RUN uv sync --locked --no-dev --no-cache --python /usr/local/bin/python \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libx11-6 libxext6 libexpat1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && uv sync --locked --no-dev --no-cache --python /usr/local/bin/python \
     && groupadd --system nomo \
     && useradd --system --gid nomo nomo
 

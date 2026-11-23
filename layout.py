@@ -8,9 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import build123d
-from build123d import BuildPart, Compound, Shape, export_step, export_stl
-
 from catalog import TemplateInstance, Vector3
 
 FENCED_CODE_PATTERN = re.compile(
@@ -828,7 +825,7 @@ FORBIDDEN_AST_CALL_NAMES = {
 class FreeGeometryLayout:
     """3D layout produced directly by running LLM-generated build123d code (no templates)."""
 
-    def __init__(self, shape: Shape, stl_content: str, step_content: str = ""):
+    def __init__(self, shape: Any, stl_content: str, step_content: str = ""):
         self.shape = shape
         self.stl_content = stl_content
         self.step_content = step_content
@@ -893,19 +890,19 @@ def validate_build123d_ast(code_text: str) -> ast.Module:
     return parsed_tree
 
 
-def _extract_build123d_shape(candidate: Any) -> Shape | None:
-    if isinstance(candidate, Shape):
+def _extract_build123d_shape(candidate: Any, bd_module: Any) -> Any:
+    if isinstance(candidate, bd_module.Shape):
         return candidate
-    if isinstance(candidate, BuildPart) and candidate.part is not None:
+    if isinstance(candidate, bd_module.BuildPart) and candidate.part is not None:
         return candidate.part
     if isinstance(candidate, (list, tuple)):
         shapes = [
             extracted
             for item in candidate
-            if (extracted := _extract_build123d_shape(item)) is not None
+            if (extracted := _extract_build123d_shape(item, bd_module)) is not None
         ]
         if shapes:
-            return Compound(children=shapes)
+            return bd_module.Compound(children=shapes)
     return None
 
 
@@ -914,6 +911,9 @@ def execute_build123d_code(code_text: str) -> FreeGeometryLayout:
     Execute LLM-generated build123d Python code using the build123d library
     and export the resulting 3D shape as ASCII STL (no templates involved).
     """
+    import build123d
+    from build123d import export_step, export_stl
+
     normalized_code = code_text.strip()
     fenced_match = FENCED_CODE_PATTERN.fullmatch(normalized_code)
     if fenced_match:
@@ -1007,11 +1007,13 @@ def execute_build123d_code(code_text: str) -> FreeGeometryLayout:
         ) from execution_error
 
     preferred_names = ("result", "part", "model", "solid", "shape", "p", "builder")
-    chosen_shape: Shape | None = None
+    chosen_shape: Any = None
 
     for variable_name in preferred_names:
         if variable_name in execution_namespace:
-            chosen_shape = _extract_build123d_shape(execution_namespace[variable_name])
+            chosen_shape = _extract_build123d_shape(
+                execution_namespace[variable_name], build123d
+            )
             if chosen_shape is not None:
                 break
 
@@ -1024,7 +1026,7 @@ def execute_build123d_code(code_text: str) -> FreeGeometryLayout:
                 or variable_name in build123d_public_symbols
             ):
                 continue
-            chosen_shape = _extract_build123d_shape(variable_value)
+            chosen_shape = _extract_build123d_shape(variable_value, build123d)
             if chosen_shape is not None:
                 break
 
