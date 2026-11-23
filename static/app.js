@@ -166,9 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setLoading(true);
 
         try {
-            const isFreeGeometryEnabled = Boolean(
-                freeGeometryToggle && freeGeometryToggle.checked,
-            );
+            const isFreeGeometryEnabled = Boolean(freeGeometryToggle && freeGeometryToggle.checked);
             const response = await fetch("/api/prompt", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -790,9 +788,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cadGroup.add(mesh);
         });
 
-        frameAndShowScene(
-            `${instances.length} part${instances.length === 1 ? "" : "s"}`,
-        );
+        frameAndShowScene(`${instances.length} part${instances.length === 1 ? "" : "s"}`);
     }
 
     // Initialize Three.js on page load
