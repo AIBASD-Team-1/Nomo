@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const promptInput = document.getElementById("prompt-input");
     const sendBtn = document.getElementById("send-btn");
     const chatMessages = document.getElementById("chat-messages");
+    const freeGeometryToggle = document.getElementById("free-geometry-toggle");
 
     // Output panel tabs and views
     const tab3d = document.getElementById("tab-3d");
@@ -165,6 +166,9 @@ document.addEventListener("DOMContentLoaded", () => {
         setLoading(true);
 
         try {
+            const isFreeGeometryEnabled = Boolean(
+                freeGeometryToggle && freeGeometryToggle.checked,
+            );
             const response = await fetch("/api/prompt", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -172,6 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     prompt: promptText,
                     conversation: previousConversation,
                     current_model: currentModel,
+                    free_geometry: isFreeGeometryEnabled,
                 }),
             });
 
@@ -272,12 +277,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateDownloadButtons(data) {
-        const hasModel = Array.isArray(data.result) && data.result.length > 0;
+        const hasTemplateModel = Array.isArray(data.result) && data.result.length > 0;
+        const hasLayout = Boolean(data.layout && data.layout.solid_count > 0);
+        const canDownload = hasTemplateModel || hasLayout;
         if (downloadStlBtn) {
-            downloadStlBtn.classList.toggle("hidden", !hasModel);
+            downloadStlBtn.classList.toggle("hidden", !canDownload);
         }
         if (downloadStepBtn) {
-            downloadStepBtn.classList.toggle("hidden", !hasModel);
+            downloadStepBtn.classList.toggle("hidden", !canDownload);
         }
     }
 
@@ -569,6 +576,128 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function parseAsciiStlToBufferGeometry(stlText) {
+        const positions = [];
+        const normals = [];
+        let currentNormal = [0, 0, 1];
+
+        const lines = stlText.split(/\r?\n/);
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith("facet normal ")) {
+                const parts = line.split(/\s+/);
+                if (parts.length >= 5) {
+                    currentNormal = [
+                        parseFloat(parts[2]) || 0,
+                        parseFloat(parts[3]) || 0,
+                        parseFloat(parts[4]) || 0,
+                    ];
+                }
+            } else if (line.startsWith("vertex ")) {
+                const parts = line.split(/\s+/);
+                if (parts.length >= 4) {
+                    positions.push(
+                        parseFloat(parts[1]) || 0,
+                        parseFloat(parts[2]) || 0,
+                        parseFloat(parts[3]) || 0,
+                    );
+                    normals.push(currentNormal[0], currentNormal[1], currentNormal[2]);
+                }
+            }
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        geom.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+        return geom;
+    }
+
+    function frameAndShowScene(partCountText) {
+        cadGroup.updateMatrixWorld(true);
+        const bbox = new THREE.Box3().setFromObject(cadGroup);
+        const center = bbox.getCenter(new THREE.Vector3());
+        const size = bbox.getSize(new THREE.Vector3());
+
+        cameraTarget.copy(center);
+        const maxDim = Math.max(size.x, size.y, size.z, 100);
+        cameraSpherical.radius = maxDim * 2.5;
+        cameraSpherical.theta = Math.PI / 4;
+        cameraSpherical.phi = Math.PI / 3;
+        updateCameraFromSpherical();
+
+        const theme = document.documentElement.getAttribute("data-theme");
+        const gridSize = Math.max(1000, Math.ceil((maxDim * 3.5) / 100) * 100);
+        createGrid(gridSize, theme);
+
+        if (threePartCount) {
+            threePartCount.textContent = partCountText;
+        }
+
+        switchTab("3d");
+        requestAnimationFrame(() => {
+            handleThreeResize();
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        });
+        setTimeout(() => {
+            handleThreeResize();
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }, 100);
+    }
+
+    function clearCadGroup() {
+        while (cadGroup.children.length > 0) {
+            const child = cadGroup.children[0];
+            cadGroup.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
+                else child.material.dispose();
+            }
+        }
+        edgesList = [];
+    }
+
+    async function renderFreeGeometryStl(stlUrl, solidCount) {
+        try {
+            const response = await fetch(stlUrl);
+            if (!response.ok) return;
+            const stlText = await response.text();
+            const geom = parseAsciiStlToBufferGeometry(stlText);
+
+            threePlaceholder.classList.add("hidden");
+            threeContainer.classList.remove("hidden");
+            clearCadGroup();
+
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xf59e0b,
+                metalness: 0.15,
+                roughness: 0.45,
+                side: THREE.DoubleSide,
+            });
+            const mesh = new THREE.Mesh(geom, material);
+
+            const edgeGeometry = new THREE.EdgesGeometry(geom, 24);
+            const edgeMaterial = new THREE.LineBasicMaterial({
+                color: 0x0f172a,
+                linewidth: 1.5,
+            });
+            const edgeLines = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+            edgeLines.visible = showEdges;
+            mesh.add(edgeLines);
+            edgesList.push(edgeLines);
+
+            cadGroup.add(mesh);
+            const count = solidCount || 1;
+            frameAndShowScene(`${count} free geometry part${count === 1 ? "" : "s"}`);
+        } catch (err) {
+            console.warn("Could not load free geometry STL preview:", err);
+        }
+    }
+
     function render3DModel(data) {
         if (!scene && typeof THREE !== "undefined") {
             initThree();
@@ -580,6 +709,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const instances = Array.isArray(data.result) ? data.result : [];
         if (instances.length === 0) {
+            if (data.layout && data.layout.free_geometry && data.layout.stl_url) {
+                renderFreeGeometryStl(data.layout.stl_url, data.layout.solid_count);
+                return;
+            }
             threePlaceholder.classList.remove("hidden");
             threeContainer.classList.add("hidden");
             return;
@@ -589,17 +722,7 @@ document.addEventListener("DOMContentLoaded", () => {
         threePlaceholder.classList.add("hidden");
         threeContainer.classList.remove("hidden");
 
-        // Clear existing geometry
-        while (cadGroup.children.length > 0) {
-            const child = cadGroup.children[0];
-            cadGroup.remove(child);
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-                if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
-                else child.material.dispose();
-            }
-        }
-        edgesList = [];
+        clearCadGroup();
 
         // Build each instance
         instances.forEach((instance, index) => {
@@ -667,42 +790,9 @@ document.addEventListener("DOMContentLoaded", () => {
             cadGroup.add(mesh);
         });
 
-        // Frame camera on the model's bounding box
-        cadGroup.updateMatrixWorld(true);
-        const bbox = new THREE.Box3().setFromObject(cadGroup);
-        const center = bbox.getCenter(new THREE.Vector3());
-        const size = bbox.getSize(new THREE.Vector3());
-
-        cameraTarget.copy(center);
-        const maxDim = Math.max(size.x, size.y, size.z, 100);
-        cameraSpherical.radius = maxDim * 2.5;
-        cameraSpherical.theta = Math.PI / 4;
-        cameraSpherical.phi = Math.PI / 3;
-        updateCameraFromSpherical();
-
-        // Update ground grid size
-        const theme = document.documentElement.getAttribute("data-theme");
-        const gridSize = Math.max(1000, Math.ceil((maxDim * 3.5) / 100) * 100);
-        createGrid(gridSize, theme);
-
-        if (threePartCount) {
-            threePartCount.textContent = `${instances.length} part${instances.length === 1 ? "" : "s"}`;
-        }
-
-        // Switch to 3D tab so user sees the 3D model
-        switchTab("3d");
-        requestAnimationFrame(() => {
-            handleThreeResize();
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-        });
-        setTimeout(() => {
-            handleThreeResize();
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-        }, 100);
+        frameAndShowScene(
+            `${instances.length} part${instances.length === 1 ? "" : "s"}`,
+        );
     }
 
     // Initialize Three.js on page load

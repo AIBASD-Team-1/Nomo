@@ -2,7 +2,9 @@ import math
 
 from catalog import TemplateInstance, Vector3
 from layout import (
+    FreeGeometryError,
     compute_face_normal,
+    execute_build123d_code,
     generate_layout,
     transform_point,
 )
@@ -238,3 +240,67 @@ def test_step_export_structure():
     assert "CARTESIAN_POINT" in step_output
     assert "ENDSEC;" in step_output
     assert "END-ISO-10303-21;" in step_output
+
+
+def test_execute_build123d_code_cone_and_export_stl():
+    code = """
+from build123d import *
+result = Cone(bottom_radius=40, top_radius=0, height=80)
+"""
+    layout = execute_build123d_code(code)
+    assert len(layout.solids) == 1
+    expected_volume = (math.pi * 80.0 / 3.0) * (40.0**2)
+    assert math.isclose(layout.total_volume, expected_volume, rel_tol=1e-2)
+
+    stl_text = layout.to_stl()
+    assert stl_text.startswith("solid nomo_layout")
+    assert "facet normal" in stl_text
+    assert "vertex" in stl_text
+    assert stl_text.strip().endswith("endsolid nomo_layout")
+
+
+def test_execute_build123d_code_boolean_subtraction_and_buildpart():
+    code = """
+```python
+from build123d import *
+
+with BuildPart() as p:
+    Cylinder(radius=20, height=12)
+    Cylinder(radius=8, height=12, mode=Mode.SUBTRACT)
+result = p.part
+```
+"""
+    layout = execute_build123d_code(code)
+    expected_volume = math.pi * (20.0**2 - 8.0**2) * 12.0
+    assert math.isclose(layout.total_volume, expected_volume, rel_tol=1e-2)
+    stl_text = layout.to_stl()
+    assert "facet normal" in stl_text
+    assert "ISO-10303-21;" in layout.to_step()
+
+
+def test_execute_build123d_code_rejects_unsafe_or_invalid_code():
+    import pytest
+
+    with pytest.raises(FreeGeometryError, match="must not be empty"):
+        execute_build123d_code("   ")
+
+    with pytest.raises(FreeGeometryError, match="Invalid Python syntax"):
+        execute_build123d_code("def broken(:")
+
+    with pytest.raises(FreeGeometryError, match="Disallowed import 'os'"):
+        execute_build123d_code("import os\nresult = Box(10, 10, 10)")
+
+    with pytest.raises(FreeGeometryError, match="Disallowed import from 'subprocess'"):
+        execute_build123d_code("from subprocess import run\nresult = Box(10, 10, 10)")
+
+    with pytest.raises(FreeGeometryError, match="Disallowed function call 'open'"):
+        execute_build123d_code("open('/etc/passwd')\nresult = Box(10, 10, 10)")
+
+    with pytest.raises(FreeGeometryError, match="Disallowed dunder attribute"):
+        execute_build123d_code("x = ().__class__\nresult = Box(10, 10, 10)")
+
+    with pytest.raises(FreeGeometryError, match="did not produce a valid 3D shape"):
+        execute_build123d_code("x = 42")
+
+    with pytest.raises(FreeGeometryError, match="Error executing build123d code"):
+        execute_build123d_code("result = UnknownFunction(10)")

@@ -46,7 +46,8 @@ class LLMResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     reply: StrictStr
-    model: list[ModelInstance]
+    model: list[ModelInstance] = Field(default_factory=list)
+    build123d_code: StrictStr | None = None
 
     @model_validator(mode="after")
     def validate_unique_instance_ids(self) -> Self:
@@ -506,16 +507,67 @@ should remain in the design. Replace the design only when the user asks to start
 """
 
 
-def build_system_prompt(base_prompt: str) -> str:
+FREE_GEOMETRY_INSTRUCTIONS = """\
+Build the product the user describes. First try to use the templates in this catalog:
+{catalog}
+
+Conventions:
+- All dimensions in mm. Z points up. Parts stand on the XY plane (z = 0) by default.
+- Each template instance is rotated about its template origin by `rotation` (degrees, about fixed X,
+  then Y, then Z, right-hand rule), then moved so its origin sits at `position`.
+- Every template parameter value must be a number within the template's min/max. Omitted parameters
+  use the default.
+
+Free geometry fallback (ENABLED):
+- If a matching template exists in the catalog, return `"model"` with the template instances and
+  do not include `"build123d_code"`.
+- ONLY when no matching template exists in the catalog for the user's request, return `"model": []`
+  and provide `"build123d_code"` containing valid Python code using `build123d` (`from build123d import *`)
+  that builds the requested 3D solid and assigns the final solid or part to a variable named `result`
+  (or `part`). Mention in `"reply"` that free geometry was generated because no matching template exists.
+- In `build123d`, class names use PascalCase (capitalized), NEVER lowercase:
+  - 3D Solids: `Box(length, width, height)`, `Cylinder(radius, height)`, `Sphere(radius)`,
+    `Cone(bottom_radius, top_radius, height)`, `Torus(major_radius, minor_radius)`,
+    `Wedge(xsize, ysize, zsize, xmin, zmin, xmax, zmax)`.
+  - 2D Sketches + Extrude: `with BuildPart() as p: with BuildSketch(): RegularPolygon(radius=20, side_count=6); extrude(amount=12); Cylinder(radius=8, height=12, mode=Mode.SUBTRACT); result = p.part`
+  - Positioning & Rotation (Algebra mode): use `Pos(x, y, z) * Rot(rx, ry, rz) * Box(...)` (there is NO `translate()` or `rotate()` function; use `Pos` and `Rot` or `with Locations((x, y, z)):`).
+  - Boolean operations: `+` (union), `-` (subtract), `&` (intersect).
+
+Answer with ONE JSON object and nothing else, matching one of these exact structures. Do not add any other keys:
+1. Template model (when templates fit):
+{{"reply": "<short message to the user>",
+  "model": [{{"id": "<unique instance id>", "template": "<template id>",
+             "parameters": {{"<name>": <number>}},
+             "position": {{"x": 0, "y": 0, "z": 0}}, "rotation": {{"x": 0, "y": 0, "z": 0}}}}]}}
+2. Free geometry fallback (when no matching template exists):
+{{"reply": "<short message to the user>",
+  "model": [],
+  "build123d_code": "<valid build123d Python code assigning the 3D shape to `result`>"}}
+
+When the user message includes a prior conversation and current model, use them to interpret the new
+request and refine that design.
+"""
+
+
+def build_system_prompt(base_prompt: str, free_geometry: bool = False) -> str:
     """Append the template catalog and the answer format to the configured system prompt."""
     catalog_json = json.dumps(TEMPLATES, indent=2)
-    instructions = INSTRUCTIONS.format(catalog=catalog_json)
+    template = FREE_GEOMETRY_INSTRUCTIONS if free_geometry else INSTRUCTIONS
+    instructions = template.format(catalog=catalog_json)
     return f"{base_prompt}\n\n{instructions}"
 
 
-def parse_reply(answer_text: str) -> tuple[str, list[dict[str, Any]]]:
+def build_free_geometry_system_prompt(base_prompt: str) -> str:
+    """Build the system prompt with free geometry fallback instructions enabled."""
+    return build_system_prompt(base_prompt, free_geometry=True)
+
+
+def parse_reply_with_code(
+    answer_text: str,
+    allow_free_geometry: bool = False,
+) -> tuple[str, list[dict[str, Any]], str | None]:
     """
-    Parse and validate the AI answer before exposing any of its content.
+    Parse and validate the AI answer, returning (reply, model, build123d_code).
 
     Raises ResponseFormatError when the answer is not valid JSON or does not
     match the required response structure.
@@ -533,6 +585,18 @@ def parse_reply(answer_text: str) -> tuple[str, list[dict[str, Any]]]:
             f"(line {error.lineno}, column {error.colno})."
         ) from error
 
+    if isinstance(answer_data, dict):
+        has_model_key = "model" in answer_data
+        has_code_key = "build123d_code" in answer_data
+        if not has_model_key and not (allow_free_geometry and has_code_key):
+            raise ResponseFormatError(
+                "Response does not match the required schema: missing required key 'model'."
+            )
+        if has_code_key and not allow_free_geometry:
+            raise ResponseFormatError(
+                "Response does not match the required schema: 'build123d_code' is not allowed when free geometry fallback is disabled."
+            )
+
     try:
         response = LLMResponse.model_validate(answer_data)
     except ValidationError as error:
@@ -543,5 +607,26 @@ def parse_reply(answer_text: str) -> tuple[str, list[dict[str, Any]]]:
             f"Response does not match the required schema: {validation_details}"
         ) from error
 
+    code_text = (
+        response.build123d_code.strip()
+        if response.build123d_code and response.build123d_code.strip()
+        else None
+    )
+    if response.build123d_code is not None and code_text is None:
+        raise ResponseFormatError(
+            "Response does not match the required schema: 'build123d_code' must not be empty."
+        )
+
     model = [instance.model_dump(mode="json") for instance in response.model]
-    return response.reply, model
+    return response.reply, model, code_text
+
+
+def parse_reply(answer_text: str) -> tuple[str, list[dict[str, Any]]]:
+    """
+    Parse and validate the AI answer before exposing any of its content.
+
+    Raises ResponseFormatError when the answer is not valid JSON or does not
+    match the required response structure.
+    """
+    reply, model, _ = parse_reply_with_code(answer_text, allow_free_geometry=False)
+    return reply, model

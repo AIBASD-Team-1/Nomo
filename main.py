@@ -16,9 +16,15 @@ from catalog import (
     ResponseFormatError,
     build_system_prompt,
     instantiate_model,
-    parse_reply,
+    parse_reply_with_code,
 )
-from layout import ModelLayout, generate_layout
+from layout import (
+    FreeGeometryError,
+    FreeGeometryLayout,
+    ModelLayout,
+    execute_build123d_code,
+    generate_layout,
+)
 from llm import call_llm
 from llm.cli_provider import stop_running_tools
 
@@ -77,6 +83,10 @@ class PromptRequest(BaseModel):
     prompt: str
     conversation: list[ConversationMessage] = Field(default_factory=list)
     current_model: list[dict[str, Any]] = Field(default_factory=list)
+    free_geometry: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("free_geometry", "free-geometry"),
+    )
 
 
 class PromptResponse(BaseModel):
@@ -94,9 +104,10 @@ class PromptResponse(BaseModel):
     reply: str
     result: Any | None = None
     layout: dict[str, Any] | None = None
+    build123d_code: str | None = None
 
 
-active_layout: ModelLayout | None = None
+active_layout: ModelLayout | FreeGeometryLayout | None = None
 
 
 def create_unimplemented_prompt_response(prompt: str) -> PromptResponse:
@@ -175,10 +186,20 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
     config_path = BASE_DIR / "config.json"
     with config_path.open("r", encoding="utf-8") as config_file:
         config = json.load(config_file)
-    system_prompt = config.get("system-prompt") or config.get(
+    default_system_prompt = config.get("system-prompt") or config.get(
         "system_prompt", "You are Nomo CAD assistant."
     )
-    full_system_prompt = build_system_prompt(system_prompt)
+    if request.free_geometry:
+        system_prompt = (
+            config.get("free-geometry-system-prompt")
+            or config.get("free_geometry_system_prompt")
+            or default_system_prompt
+        )
+    else:
+        system_prompt = default_system_prompt
+    full_system_prompt = build_system_prompt(
+        system_prompt, free_geometry=request.free_geometry
+    )
     original_user_prompt = create_contextual_user_prompt(
         request.prompt, request.conversation, current_model
     )
@@ -195,26 +216,47 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
             logger.warning("The AI provider failed: %s", error)
             return create_provider_error_response(request.prompt, error)
         try:
-            reply, raw_model = parse_reply(answer_text)
-            instantiated_instances = instantiate_model(raw_model)
-            model_result = [
-                instance.model_dump(mode="json") for instance in instantiated_instances
-            ]
-        except (ResponseFormatError, ModelValidationError) as error:
+            reply, raw_model, build123d_code = parse_reply_with_code(
+                answer_text,
+                allow_free_geometry=request.free_geometry,
+            )
+            if build123d_code is not None and not raw_model:
+                current_layout: (
+                    ModelLayout | FreeGeometryLayout | None
+                ) = await asyncio.to_thread(execute_build123d_code, build123d_code)
+                instantiated_instances = []
+                model_result = []
+            else:
+                build123d_code = None
+                instantiated_instances = instantiate_model(raw_model)
+                model_result = [
+                    instance.model_dump(mode="json")
+                    for instance in instantiated_instances
+                ]
+                current_layout = (
+                    generate_layout(instantiated_instances)
+                    if instantiated_instances
+                    else None
+                )
+        except (
+            ResponseFormatError,
+            ModelValidationError,
+            FreeGeometryError,
+        ) as error:
             if attempt_number < MAX_LLM_ATTEMPTS - 1:
                 current_user_prompt = create_invalid_response_prompt(
                     original_user_prompt, answer_text, str(error)
                 )
             continue
 
-        if instantiated_instances:
-            current_layout = generate_layout(instantiated_instances)
+        if current_layout is not None and current_layout.solids:
             active_layout = current_layout
             layout_details = {
                 "solid_count": len(current_layout.solids),
                 "bounding_box": current_layout.bounding_box.to_dict(),
                 "stl_url": "/api/model/stl",
                 "step_url": "/api/model/step",
+                "free_geometry": build123d_code is not None,
             }
         else:
             active_layout = None
@@ -229,6 +271,7 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
             reply=reply,
             result=model_result,
             layout=layout_details,
+            build123d_code=build123d_code,
         )
 
     return PromptResponse(

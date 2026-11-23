@@ -10,6 +10,7 @@ EXPECTED_DOM_ELEMENT_IDS = [
     "prompt-input",
     "send-btn",
     "chat-messages",
+    "free-geometry-toggle",
     "tab-3d",
     "tab-table",
     "tab-raw",
@@ -59,6 +60,52 @@ def test_index_contains_threejs_script_and_3d_viewer():
     assert "three.min.js" in html
     assert "3D View" in html
     assert 'id="three-canvas"' in html
+
+
+def test_index_contains_free_geometry_toggle_and_app_js_sends_flag():
+    index_response = client.get("/")
+    assert index_response.status_code == 200
+    html = index_response.text
+    assert 'id="free-geometry-toggle"' in html
+    assert 'type="checkbox"' in html
+    assert "Free geometry" in html
+
+    app_js_response = client.get("/static/app.js")
+    assert app_js_response.status_code == 200
+    app_js = app_js_response.text
+    assert "free-geometry-toggle" in app_js
+    assert "free_geometry" in app_js
+
+
+def test_prompt_request_accepts_free_geometry_toggle_flag(monkeypatch):
+    captured_system_prompts = []
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        captured_system_prompts.append(system_prompt)
+        return '{"reply": "Mock reply", "model": []}'
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    response_off = client.post(
+        "/api/prompt",
+        json={"prompt": "A custom shape", "free_geometry": False},
+    )
+    assert response_off.status_code == 200
+    assert response_off.json()["status"] == "ok"
+
+    response_on = client.post(
+        "/api/prompt",
+        json={"prompt": "A custom shape", "free_geometry": True},
+    )
+    assert response_on.status_code == 200
+    assert response_on.json()["status"] == "ok"
+
+    assert len(captured_system_prompts) == 2
+    prompt_when_off, prompt_when_on = captured_system_prompts
+    assert prompt_when_off != prompt_when_on
+    assert "ONLY from the templates in this catalog" in prompt_when_off
+    assert "build123d_code" not in prompt_when_off
+    assert "Free geometry fallback (ENABLED)" in prompt_when_on
+    assert "build123d_code" in prompt_when_on
 
 
 @pytest.mark.parametrize(
@@ -404,3 +451,76 @@ def test_export_endpoints_with_direct_post():
     assert step_response.status_code == 200
     assert "ISO-10303-21;" in step_response.text
     assert "MANIFOLD_SOLID_BREP('direct_box'" in step_response.text
+
+
+def test_free_geometry_fallback_runs_build123d_and_exports_stl(monkeypatch):
+    main.active_layout = None
+    monkeypatch.setattr(
+        main,
+        "call_llm",
+        lambda system_prompt, user_prompt, config_path: (
+            '{"reply": "No cone template exists, generated free geometry with build123d.", '
+            '"model": [], '
+            '"build123d_code": "from build123d import *\\nresult = Cone(bottom_radius=40, top_radius=0, height=80)"}'
+        ),
+    )
+
+    response = client.post(
+        "/api/prompt",
+        json={
+            "prompt": "Create a cone with base radius 40 mm and height 80 mm",
+            "free_geometry": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["result"] == []
+    assert "Cone(bottom_radius=40" in data["build123d_code"]
+    assert data["layout"] is not None
+    assert data["layout"]["free_geometry"] is True
+    assert data["layout"]["solid_count"] == 1
+    assert data["layout"]["stl_url"] == "/api/model/stl"
+
+    stl_response = client.get("/api/model/stl")
+    assert stl_response.status_code == 200
+    assert "model/stl" in stl_response.headers.get("content-type", "")
+    assert "solid nomo_layout" in stl_response.text
+    assert "facet normal" in stl_response.text
+    assert "vertex" in stl_response.text
+
+
+def test_free_geometry_fallback_retries_when_build123d_code_fails(monkeypatch):
+    user_prompts = []
+    answers = iter(
+        [
+            (
+                '{"reply": "Broken code", "model": [], '
+                '"build123d_code": "from build123d import *\\nresult = NonExistentPrimitive(10)"}'
+            ),
+            (
+                '{"reply": "Fixed torus", "model": [], '
+                '"build123d_code": "from build123d import *\\nresult = Torus(50, 15)"}'
+            ),
+        ]
+    )
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        user_prompts.append(user_prompt)
+        return next(answers)
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    response = client.post(
+        "/api/prompt",
+        json={
+            "prompt": "Create a torus with major radius 50 mm and minor radius 15 mm",
+            "free_geometry": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["reply"] == "Fixed torus"
+    assert data["layout"]["free_geometry"] is True
+    assert len(user_prompts) == 2
+    assert "NonExistentPrimitive" in user_prompts[1]
