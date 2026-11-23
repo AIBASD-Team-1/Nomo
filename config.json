@@ -2,6 +2,7 @@
   "provider": "openrouter",
   "output-file": "output/response.text",
   "system-prompt": "You are Nomo, an engineering AI that designs CAD parts using standard templates (e.g. box).",
+  "free-geometry-system-prompt": "You are Nomo, an engineering AI that designs CAD parts using standard templates first, or falls back to build123d free geometry when no matching template exists.",
   "providers": {
     "mock": {
       "model": "MOCK"
@@ -32,6 +33,13 @@
       "effort": "",
       "api_key": "OPENROUTER_API_KEY",
       "base-url": "https://openrouter.ai/api/v1"
+    },
+    "gemini": {
+      "type": "cli",
+      "model": "gemini-4-argon-low",
+      "effort": "low",
+      "command": ["agy", "--disable-slash-commands", "-p={prompt}"],
+      "effort-arguments": ["--effort", "{effort}"]
     }
   }
 }

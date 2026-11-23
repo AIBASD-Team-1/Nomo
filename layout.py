@@ -1,10 +1,26 @@
-"""Server-side 3D layout generation for parametric templates (STL and STEP export)."""
+"""Server-side 3D layout generation for parametric templates and build123d free geometry."""
 
+import ast
 import math
+import re
+import tempfile
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+import build123d
+from build123d import BuildPart, Compound, Shape, export_step, export_stl
+
 from catalog import TemplateInstance, Vector3
+
+FENCED_CODE_PATTERN = re.compile(
+    r"\A```(?:python|py)?[ \t]*\r?\n(.*?)\r?\n```[ \t]*\Z",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+class FreeGeometryError(ValueError):
+    """Raised when LLM-generated build123d code fails validation or execution."""
 
 
 class BoundingBox:
@@ -789,3 +805,256 @@ def generate_step_content(solids: list[SolidGeometry], model_name: str) -> str:
     lines.append("ENDSEC;")
     lines.append("END-ISO-10303-21;")
     return "\n".join(lines) + "\n"
+
+
+ALLOWED_IMPORT_MODULES = {"build123d", "math"}
+FORBIDDEN_AST_CALL_NAMES = {
+    "eval",
+    "exec",
+    "compile",
+    "open",
+    "input",
+    "__import__",
+    "getattr",
+    "setattr",
+    "delattr",
+    "globals",
+    "locals",
+    "vars",
+    "breakpoint",
+}
+
+
+class FreeGeometryLayout:
+    """3D layout produced directly by running LLM-generated build123d code (no templates)."""
+
+    def __init__(self, shape: Shape, stl_content: str, step_content: str = ""):
+        self.shape = shape
+        self.stl_content = stl_content
+        self.step_content = step_content
+
+        bbox = shape.bounding_box()
+        self.bounding_box = BoundingBox(
+            minimum_x=float(bbox.min.X),
+            minimum_y=float(bbox.min.Y),
+            minimum_z=float(bbox.min.Z),
+            maximum_x=float(bbox.max.X),
+            maximum_y=float(bbox.max.Y),
+            maximum_z=float(bbox.max.Z),
+        )
+        raw_solids = shape.solids() if hasattr(shape, "solids") else [shape]
+        self.solids = list(raw_solids) if raw_solids else [shape]
+        self.total_volume = float(getattr(shape, "volume", 0.0))
+
+    def to_stl(self, solid_name: str = "nomo_layout") -> str:
+        """Return the exported ASCII STL content."""
+        return self.stl_content
+
+    def to_step(self, model_name: str = "nomo_model") -> str:
+        """Return the exported STEP content."""
+        return self.step_content
+
+
+def validate_build123d_ast(code_text: str) -> ast.Module:
+    """Validate that the LLM-generated Python code only uses safe build123d/math constructs."""
+    try:
+        parsed_tree = ast.parse(code_text, mode="exec")
+    except SyntaxError as error:
+        raise FreeGeometryError(
+            f"Invalid Python syntax in build123d code: {error}"
+        ) from error
+
+    for node in ast.walk(parsed_tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root_module = alias.name.split(".")[0]
+                if root_module not in ALLOWED_IMPORT_MODULES:
+                    raise FreeGeometryError(
+                        f"Disallowed import '{alias.name}' in build123d code."
+                    )
+        elif isinstance(node, ast.ImportFrom):
+            module_name = (node.module or "").split(".")[0]
+            if module_name not in ALLOWED_IMPORT_MODULES:
+                raise FreeGeometryError(
+                    f"Disallowed import from '{node.module}' in build123d code."
+                )
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                if node.func.id in FORBIDDEN_AST_CALL_NAMES:
+                    raise FreeGeometryError(
+                        f"Disallowed function call '{node.func.id}' in build123d code."
+                    )
+        elif isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") and node.attr.endswith("__"):
+                raise FreeGeometryError(
+                    f"Disallowed dunder attribute access '{node.attr}' in build123d code."
+                )
+
+    return parsed_tree
+
+
+def _extract_build123d_shape(candidate: Any) -> Shape | None:
+    if isinstance(candidate, Shape):
+        return candidate
+    if isinstance(candidate, BuildPart) and candidate.part is not None:
+        return candidate.part
+    if isinstance(candidate, (list, tuple)):
+        shapes = [
+            extracted
+            for item in candidate
+            if (extracted := _extract_build123d_shape(item)) is not None
+        ]
+        if shapes:
+            return Compound(children=shapes)
+    return None
+
+
+def execute_build123d_code(code_text: str) -> FreeGeometryLayout:
+    """
+    Execute LLM-generated build123d Python code using the build123d library
+    and export the resulting 3D shape as ASCII STL (no templates involved).
+    """
+    normalized_code = code_text.strip()
+    fenced_match = FENCED_CODE_PATTERN.fullmatch(normalized_code)
+    if fenced_match:
+        normalized_code = fenced_match.group(1).strip()
+
+    if not normalized_code:
+        raise FreeGeometryError("build123d code must not be empty.")
+
+    parsed_tree = validate_build123d_ast(normalized_code)
+
+    build123d_public_symbols = {
+        name: getattr(build123d, name)
+        for name in dir(build123d)
+        if not name.startswith("_")
+    }
+    # Lowercase aliases and helper functions that LLMs frequently confuse with OpenSCAD
+    build123d_llm_aliases = {
+        "box": build123d.Box,
+        "cylinder": build123d.Cylinder,
+        "sphere": build123d.Sphere,
+        "cone": build123d.Cone,
+        "torus": build123d.Torus,
+        "wedge": build123d.Wedge,
+        "translate": lambda offset, shape=None: (
+            build123d.Pos(*offset) * shape
+            if shape is not None
+            else build123d.Pos(*offset)
+        ),
+    }
+
+    def safe_import(
+        name: str,
+        globals_dict: Any = None,
+        locals_dict: Any = None,
+        fromlist: Any = (),
+        level: int = 0,
+    ) -> Any:
+        root_name = name.split(".")[0]
+        if root_name == "build123d":
+            return build123d
+        if root_name == "math":
+            return math
+        raise ImportError(f"Import of '{name}' is not permitted.")
+
+    safe_builtins = {
+        "__import__": safe_import,
+        "abs": abs,
+        "all": all,
+        "any": any,
+        "bool": bool,
+        "dict": dict,
+        "enumerate": enumerate,
+        "float": float,
+        "int": int,
+        "isinstance": isinstance,
+        "len": len,
+        "list": list,
+        "max": max,
+        "min": min,
+        "pow": pow,
+        "range": range,
+        "reversed": reversed,
+        "round": round,
+        "set": set,
+        "sorted": sorted,
+        "str": str,
+        "sum": sum,
+        "tuple": tuple,
+        "zip": zip,
+        "True": True,
+        "False": False,
+        "None": None,
+    }
+
+    execution_namespace: dict[str, Any] = {
+        "__builtins__": safe_builtins,
+        "math": math,
+        "build123d": build123d,
+        **build123d_llm_aliases,
+        **build123d_public_symbols,
+    }
+
+    try:
+        compiled_code = compile(parsed_tree, filename="<build123d_code>", mode="exec")
+        exec(compiled_code, execution_namespace, execution_namespace)
+    except FreeGeometryError:
+        raise
+    except Exception as execution_error:
+        raise FreeGeometryError(
+            f"Error executing build123d code: {execution_error}"
+        ) from execution_error
+
+    preferred_names = ("result", "part", "model", "solid", "shape", "p", "builder")
+    chosen_shape: Shape | None = None
+
+    for variable_name in preferred_names:
+        if variable_name in execution_namespace:
+            chosen_shape = _extract_build123d_shape(execution_namespace[variable_name])
+            if chosen_shape is not None:
+                break
+
+    if chosen_shape is None:
+        for variable_name, variable_value in reversed(
+            list(execution_namespace.items())
+        ):
+            if (
+                variable_name.startswith("_")
+                or variable_name in build123d_public_symbols
+            ):
+                continue
+            chosen_shape = _extract_build123d_shape(variable_value)
+            if chosen_shape is not None:
+                break
+
+    if chosen_shape is None:
+        raise FreeGeometryError(
+            "build123d code did not produce a valid 3D shape. "
+            "Assign the resulting 3D shape to `result` (or `part`)."
+        )
+
+    with tempfile.TemporaryDirectory() as temporary_dir:
+        stl_path = Path(temporary_dir) / "free_geometry.stl"
+        stl_exported = export_stl(chosen_shape, stl_path, ascii_format=True)
+        if not stl_exported or not stl_path.is_file():
+            raise FreeGeometryError("build123d failed to export shape to STL.")
+        raw_stl_text = stl_path.read_text(encoding="utf-8")
+        lines = raw_stl_text.splitlines()
+        if lines and lines[0].strip() == "solid":
+            lines[0] = "solid nomo_layout"
+        if lines and lines[-1].strip() == "endsolid":
+            lines[-1] = "endsolid nomo_layout"
+        stl_content = "\n".join(lines) + "\n"
+
+        step_path = Path(temporary_dir) / "free_geometry.step"
+        export_step(chosen_shape, step_path)
+        step_content = (
+            step_path.read_text(encoding="utf-8") if step_path.is_file() else ""
+        )
+
+    return FreeGeometryLayout(
+        shape=chosen_shape,
+        stl_content=stl_content,
+        step_content=step_content,
+    )

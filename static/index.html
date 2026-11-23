@@ -67,7 +67,24 @@
             <section class="panel chat-window" id="chat-window">
                 <div class="panel-header">
                     <h2>Chat Window</h2>
-                    <span class="badge">Chat</span>
+                    <div class="chat-header-controls">
+                        <label
+                            class="toggle-control"
+                            for="free-geometry-toggle"
+                            title="Allow LLM to generate free geometry when no matching template exists"
+                        >
+                            <input
+                                type="checkbox"
+                                id="free-geometry-toggle"
+                                class="toggle-input"
+                            />
+                            <span class="toggle-track">
+                                <span class="toggle-thumb"></span>
+                            </span>
+                            <span class="toggle-label">Free geometry</span>
+                        </label>
+                        <span class="badge">Chat</span>
+                    </div>
                 </div>
 
                 <div class="chat-messages" id="chat-messages">
