@@ -12,6 +12,7 @@ Nomo turns a text prompt into a 3D model built only from **templates**. The AI c
 
 - **Template**: a parametric part. It has:
   - `id`, `name`, `description`. The description is what the AI reads to decide when to use the template.
+  - optional `standards`: human-readable company requirements that the AI must follow and report when a request cannot satisfy them.
   - `parameters`: each with `name`, `unit`, `default`, `min`, `max`.
   - `rules`: conditions over its parameters that must hold, each with a message for the user.
   - exactly one of:
@@ -54,9 +55,10 @@ Every kind of part becomes a template behind this one contract: generic shapes, 
 2. **Build.** A valid model becomes one compound solid, with each instance's geometry rotated and placed at its position. Invalid models are not built.
 3. **Export.** The built model is exported as a STEP file for download and as a mesh for the 3D view in the browser.
 4. **Generate.**
-   - **Input:** the user's prompt, the current model (possibly empty) and the template catalog: each template's id, name, description, parameters and rules.
+   - **Input:** the user's prompt, the current model (possibly empty) and the template catalog: each template's id, name, description, standards, parameters and rules.
    - **Output:** one JSON object with exactly `reply` (a string) and `model` (an array). Each model instance has exactly `id`, `template`, `parameters`, `position` and `rotation`; the position and rotation each contain numeric `x`, `y` and `z` values.
    - The AI may only use templates from the catalog.
+   - The AI treats template standards, including inherited standards, as mandatory. If a request conflicts with a standard, it makes a compliant adjustment when feasible and explains the standard and change in `reply`. Otherwise it returns an empty model and explains why the request cannot be fulfilled; it must not bypass a standard by choosing another template or free geometry.
    - **Response format repair:** malformed JSON or a response that does not match this structure is sent back to the AI with its validation error. There are at most 10 calls total. If none produces a valid response, the user sees an error and receives no invalid model or raw AI response.
    - **Repair:** if the new model is invalid, the violations go back to the AI to fix, for up to 3 attempts. The reply tells the user about any rule that changed their request. If the model is still invalid after the last attempt, the current model stays unchanged and the user sees the violations.
    - **No fit:** if no template fits the request, the AI says so and the model stays unchanged.

@@ -216,6 +216,7 @@ class Template(BaseModel):
 
     id: str
     description: str = ""
+    standards: list[StrictStr] = Field(default_factory=list)
     parameters: dict[str, TemplateParameter] = Field(default_factory=dict)
     rules: list[TemplateRule] = Field(default_factory=list)
     origin: str = ""
@@ -298,11 +299,15 @@ def load_template_catalog(
             combined_parameters[parameter_name] = parameter_definition
 
         combined_rules = list(base_template.rules) + list(raw_template.rules)
+        combined_standards = list(base_template.standards) + list(
+            raw_template.standards
+        )
         origin = raw_template.origin or base_template.origin
 
         resolved = Template(
             id=raw_template.id,
             description=raw_template.description or base_template.description,
+            standards=combined_standards,
             parameters=combined_parameters,
             rules=combined_rules,
             origin=origin,
@@ -492,6 +497,11 @@ Conventions:
 - Each instance is rotated about its template origin by `rotation` (degrees, about fixed X, then Y,
   then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every parameter value must be a number within the template's min/max. Omitted parameters use the default.
+- Treat every human-readable `standards` entry in the catalog as mandatory, including standards inherited
+  from a template's `base`. Never return model data that violates a standard. If the request conflicts
+  with a standard, make a compliant adjustment when feasible and explain the standard and change in
+  `reply`. Otherwise return `"model": []` and explain why the request cannot be fulfilled.
+- Do not use another template or free geometry to bypass an applicable standard.
 
 Answer with ONE JSON object and nothing else, matching this exact structure. Do not add any other keys:
 {{"reply": "<short message to the user>",
@@ -517,6 +527,11 @@ Conventions:
   then Y, then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every template parameter value must be a number within the template's min/max. Omitted parameters
   use the default.
+- Treat every human-readable `standards` entry in the catalog as mandatory, including standards inherited
+  from a template's `base`. Never return model data that violates a standard. If the request conflicts
+  with a standard, make a compliant adjustment when feasible and explain the standard and change in
+  `reply`. Otherwise return `"model": []` and explain why the request cannot be fulfilled.
+- Do not use free geometry or another template to bypass an applicable standard.
 
 Free geometry fallback (ENABLED):
 - If a matching template exists in the catalog, return `"model"` with the template instances and
