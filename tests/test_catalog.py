@@ -1,5 +1,6 @@
 import pytest
 
+import catalog
 from catalog import (
     FREE_GEOMETRY_INSTRUCTIONS,
     INSTRUCTIONS,
@@ -19,6 +20,29 @@ def test_prompt_lists_all_templates():
         assert f'"id": "{template_id}"' in prompt
     assert "ONLY from the templates in this catalog" in prompt
     assert "build123d_code" not in prompt
+
+
+@pytest.mark.parametrize("free_geometry", [False, True])
+def test_prompt_includes_and_enforces_template_standards(monkeypatch, free_geometry):
+    monkeypatch.setattr(
+        catalog,
+        "TEMPLATES",
+        [
+            {
+                "id": "company-panel",
+                "standards": [
+                    "Panels longer than 1200 mm must be at least 25 mm thick."
+                ],
+            }
+        ],
+    )
+
+    prompt = build_system_prompt("BASE", free_geometry=free_geometry)
+
+    assert "Panels longer than 1200 mm must be at least 25 mm thick." in prompt
+    assert "Treat every human-readable `standards` entry" in prompt
+    assert 'return `"model": []`' in prompt
+    assert "bypass an applicable standard" in prompt
 
 
 def test_free_geometry_system_prompt_differs_from_standard_prompt():

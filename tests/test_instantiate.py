@@ -32,6 +32,24 @@ def test_instantiate_box_with_default_parameters():
     }
 
 
+def test_box_with_5mm_height_reports_rule_violation():
+    catalog = load_template_catalog()
+    raw_instance = {
+        "id": "box_5mm_high",
+        "template": "box",
+        "parameters": {"height": 5.0},
+        "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "rotation": {"x": 0.0, "y": 0.0, "z": 0.0},
+    }
+
+    with pytest.raises(ModelValidationError) as error_info:
+        instantiate_model([raw_instance], catalog)
+
+    violation = error_info.value.violations[0]
+    assert violation.parameter == "height"
+    assert violation.message == "height must be greater than 10"
+
+
 def test_instantiate_box_with_partial_and_custom_parameters():
     catalog = load_template_catalog()
     raw_instance = {
@@ -206,6 +224,7 @@ def test_base_template_inheritance_and_cycles(tmp_path):
         """{
         "id": "box",
         "description": "Base box",
+        "standards": ["Use approved material."],
         "parameters": {
             "length": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
             "width": {"unit": "mm", "min": 1, "max": 10000, "default": 100},
@@ -221,6 +240,7 @@ def test_base_template_inheritance_and_cycles(tmp_path):
         """{
         "id": "panel",
         "base": "box",
+        "standards": ["Panels longer than 1200 mm must be at least 25 mm thick."],
         "parameters": {
             "height": {"unit": "mm", "min": 5, "max": 50, "default": 19}
         },
@@ -235,6 +255,10 @@ def test_base_template_inheritance_and_cycles(tmp_path):
     assert panel_template.parameters["length"].default == 100.0
     assert panel_template.parameters["height"].default == 19.0
     assert panel_template.origin == "centre of bottom"
+    assert panel_template.standards == [
+        "Use approved material.",
+        "Panels longer than 1200 mm must be at least 25 mm thick.",
+    ]
 
     # Test circular dependency detection
     a_path = tmp_path / "cycle_a.json"

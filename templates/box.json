@@ -21,6 +21,22 @@
       "default": 100
     }
   },
-  "rules": [],
+  "rules": [
+    {
+      "check": "length > 10",
+      "message": "length must be greater than 10",
+      "parameter": "length"
+    },
+    {
+      "check": "width > 10",
+      "message": "width must be greater than 10",
+      "parameter": "width"
+    },
+    {
+      "check": "height > 10",
+      "message": "height must be greater than 10",
+      "parameter": "height"
+    }
+  ],
   "origin": "centre of the bottom face; length along X, width along Y, height along Z"
 }
