@@ -116,6 +116,22 @@ def test_index_contains_free_geometry_toggle_and_app_js_sends_flag():
     assert "free_geometry" in app_js
 
 
+def test_prompt_request_sends_interface_language_to_the_ai(monkeypatch):
+    captured_system_prompts = []
+
+    def mock_call_llm(system_prompt, user_prompt, config_path):
+        captured_system_prompts.append(system_prompt)
+        return '{"reply": "Mock reply", "model": []}'
+
+    monkeypatch.setattr(main, "call_llm", mock_call_llm)
+    client.post("/api/prompt", json={"prompt": "Box"})
+    client.post("/api/prompt", json={"prompt": "صندوق", "language": "ar"})
+
+    english_prompt, arabic_prompt = captured_system_prompts
+    assert "Always write `reply` in English," in english_prompt
+    assert "Always write `reply` in Modern Standard Arabic," in arabic_prompt
+
+
 def test_prompt_request_accepts_free_geometry_toggle_flag(monkeypatch):
     captured_system_prompts = []
 

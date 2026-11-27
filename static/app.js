@@ -342,6 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     conversation: previousConversation,
                     current_model: currentModel,
                     free_geometry: isFreeGeometryEnabled,
+                    language: currentLanguage(),
                 }),
             });
 

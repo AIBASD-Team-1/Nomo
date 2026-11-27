@@ -87,6 +87,7 @@ class PromptRequest(BaseModel):
         default=False,
         validation_alias=AliasChoices("free_geometry", "free-geometry"),
     )
+    language: Literal["en", "ar"] = "en"
 
 
 class PromptResponse(BaseModel):
@@ -198,7 +199,7 @@ async def process_prompt(request: PromptRequest) -> PromptResponse:
     else:
         system_prompt = default_system_prompt
     full_system_prompt = build_system_prompt(
-        system_prompt, free_geometry=request.free_geometry
+        system_prompt, free_geometry=request.free_geometry, language=request.language
     )
     original_user_prompt = create_contextual_user_prompt(
         request.prompt, request.conversation, current_model
