@@ -34,6 +34,7 @@ EXPECTED_DOM_ELEMENT_IDS = [
     "copy-json-btn",
     "json-status-indicator",
     "language-toggle",
+    "palette-toggle",
 ]
 
 
@@ -79,6 +80,16 @@ def test_index_supports_arabic_right_to_left_layout():
     assert 'localStorage.getItem("nomo-language")' in html
     assert 'document.documentElement.dir = language === "ar" ? "rtl" : "ltr"' in html
     assert re.search(r'<pre\s+dir="ltr"', html)
+
+
+def test_colour_blind_palette_is_remembered_and_avoids_red_green():
+    html = client.get("/").content.decode("utf-8")
+    assert 'localStorage.getItem("nomo-palette") === "colour-blind"' in html
+    stylesheet = client.get("/static/style.css").text
+    assert ':root[data-palette="colour-blind"]' in stylesheet
+    assert ':root[data-theme="dark"][data-palette="colour-blind"]' in stylesheet
+    app_js = client.get("/static/app.js").content.decode("utf-8")
+    assert "ألوان مناسبة لعمى الألوان" in app_js
 
 
 def test_index_contains_threejs_script_and_3d_viewer():
