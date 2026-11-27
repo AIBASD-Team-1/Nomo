@@ -3,6 +3,7 @@
 const COPY_FEEDBACK_DURATION_MS = 1800;
 const THEME_STORAGE_KEY = "nomo-theme";
 const LANGUAGE_STORAGE_KEY = "nomo-language";
+const PALETTE_STORAGE_KEY = "nomo-palette";
 
 const TRANSLATIONS = {
     en: {
@@ -31,7 +32,7 @@ const TRANSLATIONS = {
         columnKey: "Key",
         columnType: "Type",
         columnValue: "Value",
-        ready: "Ready",
+        ready: "○ Ready",
         received: "✓ Response received",
         receivedError: "⚠ Response with error",
         copyJson: "Copy JSON",
@@ -49,6 +50,7 @@ const TRANSLATIONS = {
         toDark: "Switch to dark mode",
         downloadStl: "Download STL",
         downloadStep: "Download STEP",
+        colourBlind: "Colour-blind safe",
     },
     ar: {
         languageToggle: "English",
@@ -75,7 +77,7 @@ const TRANSLATIONS = {
         columnKey: "المفتاح",
         columnType: "النوع",
         columnValue: "القيمة",
-        ready: "جاهز",
+        ready: "○ جاهز",
         received: "✓ تم استلام النتيجة",
         receivedError: "⚠ النتيجة تحتوي على خطأ",
         copyJson: "نسخ JSON",
@@ -93,6 +95,7 @@ const TRANSLATIONS = {
         toDark: "التبديل إلى الوضع الداكن",
         downloadStl: "تنزيل STL",
         downloadStep: "تنزيل STEP",
+        colourBlind: "ألوان مناسبة لعمى الألوان",
     },
 };
 
@@ -178,6 +181,33 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
         } catch (e) {
             // Storage unavailable; language just won't persist
+        }
+    });
+
+    // Colour-blind safe palette
+    const paletteToggle = document.getElementById("palette-toggle");
+
+    function applyPalette(isColourBlindSafe) {
+        if (isColourBlindSafe) {
+            document.documentElement.setAttribute("data-palette", "colour-blind");
+        } else {
+            document.documentElement.removeAttribute("data-palette");
+        }
+        paletteToggle.setAttribute("aria-pressed", String(isColourBlindSafe));
+    }
+
+    applyPalette(document.documentElement.getAttribute("data-palette") === "colour-blind");
+
+    paletteToggle.addEventListener("click", () => {
+        const isColourBlindSafe = paletteToggle.getAttribute("aria-pressed") !== "true";
+        applyPalette(isColourBlindSafe);
+        try {
+            localStorage.setItem(
+                PALETTE_STORAGE_KEY,
+                isColourBlindSafe ? "colour-blind" : "default",
+            );
+        } catch (e) {
+            // Storage unavailable; palette just won't persist
         }
     });
 
@@ -383,6 +413,13 @@ document.addEventListener("DOMContentLoaded", () => {
         return typeof value;
     }
 
+    function formatItemCount(count) {
+        if (currentLanguage() === "ar") {
+            return `عدد العناصر: ${count.toLocaleString("ar-SA")}`;
+        }
+        return `${count} items`;
+    }
+
     function formatValueDisplay(key, val, type) {
         if (val === null) {
             return `<span class="type-tag">null</span>`;
@@ -393,13 +430,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (type === "array") {
             const formatted = escapeHtml(JSON.stringify(val, null, 2));
-            return `<span class="table-badge">${val.length} items</span> <pre class="table-code-block with-margin" dir="ltr">${formatted}</pre>`;
+            return `<span class="table-badge">${formatItemCount(val.length)}</span> <pre class="table-code-block with-margin" dir="ltr">${formatted}</pre>`;
         }
         if (key === "status") {
-            const badgeClass = val === "success" ? "success" : "warning";
-            return `<span class="table-badge ${badgeClass}">${escapeHtml(String(val))}</span>`;
+            const isSuccess = val === "ok" || val === "success";
+            const badgeClass = isSuccess ? "success" : "warning";
+            const icon = isSuccess ? "✓" : "⚠";
+            return `<span class="table-badge ${badgeClass}">${icon} ${escapeHtml(String(val))}</span>`;
         }
-        return `<code>${escapeHtml(String(val))}</code>`;
+        return `<code dir="auto">${escapeHtml(String(val))}</code>`;
     }
 
     function createTableRow(key, val) {

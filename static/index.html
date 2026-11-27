@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Nomo - CAD Prompt Web App</title>
-        <link rel="stylesheet" href="/static/style.css?v=5" />
+        <link rel="stylesheet" href="/static/style.css?v=6" />
         <script src="/static/three.min.js"></script>
         <script>
             (function () {
@@ -19,6 +19,11 @@
                 } catch (e) {}
                 document.documentElement.lang = language;
                 document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+                try {
+                    if (localStorage.getItem("nomo-palette") === "colour-blind") {
+                        document.documentElement.setAttribute("data-palette", "colour-blind");
+                    }
+                } catch (e) {}
             })();
         </script>
     </head>
@@ -31,6 +36,15 @@
             <div class="header-subtitle" data-i18n="subtitle">
                 Enter prompts in the chat window and see the result as JSON
             </div>
+            <button
+                type="button"
+                id="palette-toggle"
+                class="header-btn"
+                aria-pressed="false"
+                data-i18n="colourBlind"
+            >
+                Colour-blind safe
+            </button>
             <button
                 type="button"
                 id="language-toggle"
@@ -270,7 +284,7 @@
                                 id="json-status-indicator"
                                 class="status-indicator"
                                 data-i18n="ready"
-                                >Ready</span
+                                >○ Ready</span
                             >
                             <button
                                 type="button"
@@ -289,6 +303,6 @@
             </section>
         </main>
 
-        <script src="/static/app.js?v=5"></script>
+        <script src="/static/app.js?v=6"></script>
     </body>
 </html>
