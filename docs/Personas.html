@@ -1,0 +1,48 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Nomo Personas</title>
+<style>
+body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.3; margin: 1.8cm; }
+h1 { font-size: 15pt; margin: 0 0 6px; }
+h2 { font-size: 12.5pt; margin: 16px 0 4px; }
+p { margin: 3px 0; }
+</style>
+</head>
+<body>
+<h1>Nomo Personas (Team 1)</h1>
+<p>Proto-personas based on our product proposal, web standards (W3C) and persona guides (NN/g, Digital NSW). Each lists the assumptions we still need to validate.</p>
+
+<h2>1. Faisal Al-Harbi, product engineer, Riyadh</h2>
+<p><b>Background:</b> 34, mechanical engineer at a furniture manufacturer. Arabic is his first language; he reads English technical terms but writes ideas in Arabic.</p>
+<p><b>Goals and motivations:</b> a first 3D draft of a customer request within minutes, to show colleagues before detailed CAD work.</p>
+<p><b>Behaviour and frustrations:</b> writes metric dimensions, mixing Arabic-Indic and Western digits. Dislikes English-only tools, broken right-to-left layouts and machine-sounding translations.</p>
+<p><b>Context:</b> office PC (Windows, Edge), high CAD skills, locale ar-SA, expects formal Modern Standard Arabic. No specific accessibility needs known.</p>
+<p><b>Scenario:</b> he switches Nomo to Arabic, describes a 100 mm box in Arabic, and gets an Arabic reply and the parameter table.</p>
+<p><b>Implications:</b> language switch, RTL layout, Arabic input with both digit styles and Arabic messages are the first demo stories.</p>
+<p><b>Evidence / to validate:</b> W3C RTL guidance. Assumed: digit mixing and preference for Arabic input; digit use and wording checked by a native speaker before 27 November.</p>
+
+<h2>2. Omar Al-Qahtani, design student with red-green colour blindness, Jeddah</h2>
+<p><b>Background:</b> 19, first-year industrial design student with deuteranopia; uses Arabic and English.</p>
+<p><b>Goals and motivations:</b> simple 3D models for assignments and 3D printing without learning full CAD, and without asking others what a colour means.</p>
+<p><b>Behaviour and frustrations:</b> starts from example prompts, uses dark mode, relies on icons and text. Red/green status colours and colour-only tab markers fail for him.</p>
+<p><b>Context:</b> own laptop, good digital skills, CAD beginner. Locale ar-SA; Arabic UI with familiar, neutral icons. Needs icon + text for status, a blue/orange palette and good contrast.</p>
+<p><b>Scenario:</b> he sends an empty prompt, sees a warning icon with an Arabic message, then turns on the colour-blind setting.</p>
+<p><b>Implications:</b> colour-blind setting is priority 2; no new UI may use colour as the only signal (WCAG 1.4.1).</p>
+<p><b>Evidence / to validate:</b> W3C Use of Color. Assumed: dark mode use and that blue/orange works for him; palette tested with a simulator and, if possible, a colour-blind student.</p>
+
+<h2>3. Lukas Hofer, intralogistics engineer, Graz</h2>
+<p><b>Background:</b> 38, design engineer at an intralogistics company that builds shelving, storage and conveyor systems for warehouses. German speaker, works in English with international customers.</p>
+<p><b>Goals and motivations:</b> quick, dimension-exact STEP drafts of standard parts (shelf bays, bins, brackets) for early customer layouts and quotes, based on company templates.</p>
+<p><b>Behaviour and frustrations:</b> short English prompts with exact sizes, then a correction and STEP download. Dislikes AI that ignores dimensions or invents non-standard geometry, and updates that change his workflow.</p>
+<p><b>Context:</b> office workstation with two screens, high CAD skills, locale de-AT, expects metric units and European standard sizes. No specific accessibility needs known.</p>
+<p><b>Scenario:</b> he enters "Shelf bay 1200 x 800 x 2000 mm, five levels", checks the values against the company standard and downloads STEP for the layout.</p>
+<p><b>Implications:</b> English stays default and must keep working (existing tests); company templates, rule violations and STEP download stay in the backlog.</p>
+<p><b>Evidence / to validate:</b> our proposal and spec. Assumed: STEP and company templates are his main needs; template and STEP needs to be checked with an engineer at a Styrian intralogistics company.</p>
+<p style="margin-top:14px"><b>Sources:</b> W3C qa-html-dir; W3C WCAG 1.4.1 Use of Color; NN/g Personas Study Guide; Digital NSW persona guide.</p>
+</body>
+</html>
+
+
+
