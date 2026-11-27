@@ -8,11 +8,11 @@ const PALETTE_STORAGE_KEY = "nomo-palette";
 const TRANSLATIONS = {
     en: {
         languageToggle: "العربية",
-        subtitle: "Enter prompts in the chat window and see the result as JSON",
+        subtitle: "Describe your design in the chat and see it as a 3D model",
         chatTitle: "Chat Window",
         assistantName: "Nomo AI",
         userName: "You",
-        greeting: "Hello! Enter your prompt below to see the result as JSON.",
+        greeting: "Hello! Describe your design below to see it as a 3D model.",
         tryLabel: "Try:",
         tableChip: "Kitchen table 160 × 90 cm",
         tablePrompt: "Kitchen table 160 x 90 cm for six people, four legs",
