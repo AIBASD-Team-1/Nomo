@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -31,6 +33,7 @@ EXPECTED_DOM_ELEMENT_IDS = [
     "json-raw-code",
     "copy-json-btn",
     "json-status-indicator",
+    "language-toggle",
 ]
 
 
@@ -51,6 +54,31 @@ def test_index_contains_all_frontend_contract_element_ids():
         assert f'id="{element_id}"' in html, (
             f"Missing required element id: {element_id}"
         )
+
+
+@pytest.mark.parametrize(
+    "arabic_text",
+    [
+        "نافذة المحادثة",
+        "إرسال",
+        "لوحة النتائج",
+        "نسخ JSON",
+        "جارٍ الإنشاء…",
+        "يرجى كتابة وصف التصميم أولًا.",
+        "تعذّر إنشاء النموذج. حاول مرة أخرى.",
+        "تم النسخ",
+    ],
+)
+def test_app_js_contains_arabic_demo_path_labels(arabic_text: str):
+    app_js = client.get("/static/app.js").content.decode("utf-8")
+    assert arabic_text in app_js
+
+
+def test_index_supports_arabic_right_to_left_layout():
+    html = client.get("/").content.decode("utf-8")
+    assert 'localStorage.getItem("nomo-language")' in html
+    assert 'document.documentElement.dir = language === "ar" ? "rtl" : "ltr"' in html
+    assert re.search(r'<pre\s+dir="ltr"', html)
 
 
 def test_index_contains_threejs_script_and_3d_viewer():

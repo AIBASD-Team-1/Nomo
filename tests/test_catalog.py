@@ -60,6 +60,15 @@ def test_free_geometry_system_prompt_differs_from_standard_prompt():
         assert f'"id": "{template_id}"' in free_prompt
 
 
+@pytest.mark.parametrize("free_geometry", [False, True])
+def test_system_prompt_asks_for_reply_in_user_language_and_eastern_digits(
+    free_geometry: bool,
+):
+    prompt = build_system_prompt("BASE", free_geometry=free_geometry)
+    assert "in the language of the user's request" in prompt
+    assert "Eastern\n  Arabic digits (٠–٩)" in prompt
+
+
 def test_parse_reply_extracts_fenced_json():
     text = (
         '```json\n{"reply": "A ball", "model": [{"id": "b1", "template": "sphere", '
