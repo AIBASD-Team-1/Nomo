@@ -61,12 +61,16 @@ def test_free_geometry_system_prompt_differs_from_standard_prompt():
 
 
 @pytest.mark.parametrize("free_geometry", [False, True])
-def test_system_prompt_asks_for_reply_in_user_language_and_eastern_digits(
-    free_geometry: bool,
+@pytest.mark.parametrize(
+    "language, reply_language",
+    [("en", "English"), ("ar", "Modern Standard Arabic")],
+)
+def test_system_prompt_fixes_reply_language_and_reads_eastern_digits(
+    free_geometry: bool, language: str, reply_language: str
 ):
-    prompt = build_system_prompt("BASE", free_geometry=free_geometry)
-    assert "in the language of the user's request" in prompt
-    assert "Eastern\n  Arabic digits (٠–٩)" in prompt
+    prompt = build_system_prompt("BASE", free_geometry=free_geometry, language=language)
+    assert f"Always write `reply` in {reply_language}," in prompt
+    assert "Eastern Arabic digits (٠–٩)" in prompt
 
 
 def test_parse_reply_extracts_fenced_json():

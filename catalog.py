@@ -494,8 +494,8 @@ Build the product the user describes ONLY from the templates in this catalog:
 
 Conventions:
 - All dimensions in mm. Z points up. Parts stand on the XY plane (z = 0) by default.
-- Write `reply` in the language of the user's request (e.g. Arabic for an Arabic request). Read Eastern
-  Arabic digits (٠–٩) like Western digits (0–9). Ids, template ids and parameter names stay English.
+- Read Eastern Arabic digits (٠–٩) like Western digits (0–9). Ids, template ids and parameter names stay
+  English.
 - Each instance is rotated about its template origin by `rotation` (degrees, about fixed X, then Y,
   then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every parameter value must be a number within the template's min/max. Omitted parameters use the default.
@@ -525,8 +525,8 @@ Build the product the user describes. First try to use the templates in this cat
 
 Conventions:
 - All dimensions in mm. Z points up. Parts stand on the XY plane (z = 0) by default.
-- Write `reply` in the language of the user's request (e.g. Arabic for an Arabic request). Read Eastern
-  Arabic digits (٠–٩) like Western digits (0–9). Ids, template ids and parameter names stay English.
+- Read Eastern Arabic digits (٠–٩) like Western digits (0–9). Ids, template ids and parameter names stay
+  English.
 - Each template instance is rotated about its template origin by `rotation` (degrees, about fixed X,
   then Y, then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every template parameter value must be a number within the template's min/max. Omitted parameters
@@ -568,12 +568,19 @@ request and refine that design.
 """
 
 
-def build_system_prompt(base_prompt: str, free_geometry: bool = False) -> str:
-    """Append the template catalog and the answer format to the configured system prompt."""
+REPLY_LANGUAGES = {"en": "English", "ar": "Modern Standard Arabic"}
+
+
+def build_system_prompt(
+    base_prompt: str, free_geometry: bool = False, language: str = "en"
+) -> str:
+    """Append the template catalog, the answer format and the reply language to the system prompt."""
     catalog_json = json.dumps(TEMPLATES, indent=2)
     template = FREE_GEOMETRY_INSTRUCTIONS if free_geometry else INSTRUCTIONS
     instructions = template.format(catalog=catalog_json)
-    return f"{base_prompt}\n\n{instructions}"
+    reply_language = REPLY_LANGUAGES.get(language, REPLY_LANGUAGES["en"])
+    language_rule = f"Always write `reply` in {reply_language}, whatever language the user writes in."
+    return f"{base_prompt}\n\n{instructions}\n{language_rule}\n"
 
 
 def build_free_geometry_system_prompt(base_prompt: str) -> str:
