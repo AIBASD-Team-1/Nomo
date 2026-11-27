@@ -22,7 +22,7 @@ Upload as **Unlisted**, check they play signed out, submit in TeachCenter as
 | 6 | Click **JSON Table**, then **Raw JSON**, then **Copy JSON**. | "Behind the 3D view, every design is plain, validated JSON: which template, which parameters, and where each part sits. Developers can copy it with one click." |
 | 7 | Click **Download STEP**. | "When the design is ready, I download it as STEP or STL and open it in any CAD tool or send it to a 3D printer." |
 | 8 | Switch on **Free geometry**, type `A cone, base radius 40 mm, height 80 mm`, press **Send**. | "There is no cone template yet. If the user explicitly turns on Free geometry, Nomo can fall back to generated geometry and says so clearly in its answer. By default it stays on templates only." |
-| 9 | Click the theme button, then **Colour-blind safe**. | "For accessibility there is a light and a dark theme, and a colour-blind safe palette. It replaces red and green with blue and orange, and every status always shows an icon and a text, never colour alone." |
+| 9 | Click the theme button. | "There is also a light and a dark theme, so Nomo is comfortable to use in any environment." |
 | 10 | Go back to **3D View**. | "So that's Nomo: describe, refine, check the rules, and export. Thanks for watching." |
 
 ## Video 2 — Arabic interface
@@ -37,7 +37,7 @@ Upload as **Unlisted**, check they play signed out, submit in TeachCenter as
 | 6 | Type `اجعل سماكة سطح الطاولة ١٠ مم`, press **إرسال**. | "And here I break the same rule as before: I ask for a 10 millimetre table top — written with Eastern Arabic digits. Nomo explains in Arabic that the box must be thicker than 10 millimetres and proposes a valid thickness." |
 | 7 | Type `صندوق 200 × 50 × 20 مم`, press **إرسال**. | "Users in Saudi Arabia read both Eastern and Western digits, so this prompt with Western digits works as well." |
 | 8 | Click **جدول JSON**. | "All labels are Arabic, but code and JSON stay left to right, so numbers and keys remain readable. This follows the W3C guidance for right-to-left pages." |
-| 9 | Click **ألوان مناسبة لعمى الألوان**, then reload the page. | "The colour-blind safe palette is available in Arabic too. After a reload, both the language and the palette are remembered." |
+| 9 | Reload the page. | "After a reload, the Arabic interface is remembered, so the user doesn't have to switch again." |
 | 10 | Click **تنزيل STEP**. | "And the export is the same STEP file. Thank you for watching." |
 
 ## Prompt translations (for the narrator)
