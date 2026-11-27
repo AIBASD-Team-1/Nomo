@@ -4,6 +4,9 @@ Two videos of the same build, about 5 minutes each, both narrated in English.
 Upload as **Unlisted**, check they play signed out, submit in TeachCenter as
 "English interface" and "Arabic interface" by **18:00 CET**.
 
+Recorded: English interface — https://www.youtube.com/watch?v=Lp9IzCjM7tA
+(local copy: [2026-11-27 Nomo Demo1.mp4](./2026-11-27%20Nomo%20Demo1.mp4)).
+
 ## Before recording
 
 - `git pull` on `dev`, start `uv run --locked uvicorn main:app` with a real AI provider (not mock).
