@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Nomo - CAD Prompt Web App</title>
-        <link rel="stylesheet" href="/static/style.css?v=4" />
+        <link rel="stylesheet" href="/static/style.css?v=5" />
         <script src="/static/three.min.js"></script>
         <script>
             (function () {
@@ -13,6 +13,12 @@
                     theme = localStorage.getItem("nomo-theme") === "light" ? "light" : "dark";
                 } catch (e) {}
                 document.documentElement.setAttribute("data-theme", theme);
+                var language = "en";
+                try {
+                    language = localStorage.getItem("nomo-language") === "ar" ? "ar" : "en";
+                } catch (e) {}
+                document.documentElement.lang = language;
+                document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
             })();
         </script>
     </head>
@@ -22,9 +28,18 @@
                 <span class="logo-title">Nomo</span>
                 <span class="logo-badge">CAD AI</span>
             </div>
-            <div class="header-subtitle">
+            <div class="header-subtitle" data-i18n="subtitle">
                 Enter prompts in the chat window and see the result as JSON
             </div>
+            <button
+                type="button"
+                id="language-toggle"
+                class="header-btn"
+                lang="ar"
+                data-i18n="languageToggle"
+            >
+                العربية
+            </button>
             <button
                 type="button"
                 id="theme-toggle"
@@ -66,55 +81,62 @@
             <!-- Chat Window -->
             <section class="panel chat-window" id="chat-window">
                 <div class="panel-header">
-                    <h2>Chat Window</h2>
+                    <h2 data-i18n="chatTitle">Chat Window</h2>
                     <div class="chat-header-controls">
                         <label
                             class="toggle-control"
                             for="free-geometry-toggle"
                             title="Allow LLM to generate free geometry when no matching template exists"
+                            data-i18n-title="freeGeometryHint"
                         >
                             <input type="checkbox" id="free-geometry-toggle" class="toggle-input" />
                             <span class="toggle-track">
                                 <span class="toggle-thumb"></span>
                             </span>
-                            <span class="toggle-label">Free geometry</span>
+                            <span class="toggle-label" data-i18n="freeGeometry">Free geometry</span>
                         </label>
-                        <span class="badge">Chat</span>
+                        <span class="badge" data-i18n="chatBadge">Chat</span>
                     </div>
                 </div>
 
                 <div class="chat-messages" id="chat-messages">
                     <div class="message assistant-message">
-                        <div class="message-sender">Nomo AI</div>
-                        <div class="message-content">
+                        <div class="message-sender" data-i18n="assistantName">Nomo AI</div>
+                        <div class="message-content" data-i18n="greeting">
                             Hello! Enter your prompt below to see the result as JSON.
                         </div>
                     </div>
                 </div>
 
                 <div class="quick-prompts">
-                    <span class="quick-label">Try:</span>
+                    <span class="quick-label" data-i18n="tryLabel">Try:</span>
                     <button
                         type="button"
                         class="chip"
+                        data-i18n="tableChip"
                         data-prompt="Kitchen table 160 x 90 cm for six people, four legs"
                     >
                         Kitchen table 160 × 90 cm
                     </button>
-                    <button type="button" class="chip" data-prompt="Box 100 x 100 x 100 mm">
+                    <button
+                        type="button"
+                        class="chip"
+                        data-i18n="boxChip"
+                        data-prompt="Box 100 x 100 x 100 mm"
+                    >
                         Box 100 mm
                     </button>
                 </div>
 
-                <form class="chat-input-form" id="chat-form">
+                <form class="chat-input-form" id="chat-form" novalidate>
                     <textarea
                         id="prompt-input"
                         placeholder="Enter your prompt here..."
+                        data-i18n-placeholder="placeholder"
                         rows="2"
-                        required
                     ></textarea>
                     <button type="submit" id="send-btn" class="primary-btn">
-                        <span>Send</span>
+                        <span data-i18n="send">Send</span>
                         <svg
                             class="send-icon"
                             viewBox="0 0 24 24"
@@ -131,7 +153,7 @@
             <!-- Output Panel -->
             <section class="panel output-panel" id="output-panel">
                 <div class="panel-header">
-                    <h2>Output Panel</h2>
+                    <h2 data-i18n="outputTitle">Output Panel</h2>
                     <div class="panel-actions">
                         <div class="download-controls">
                             <a
@@ -139,6 +161,7 @@
                                 class="secondary-btn hidden"
                                 href="/api/model/stl"
                                 download="model.stl"
+                                data-i18n="downloadStl"
                                 >Download STL</a
                             >
                             <a
@@ -146,15 +169,30 @@
                                 class="secondary-btn hidden"
                                 href="/api/model/step"
                                 download="model.step"
+                                data-i18n="downloadStep"
                                 >Download STEP</a
                             >
                         </div>
                         <div class="tab-controls">
-                            <button type="button" class="tab-btn active" id="tab-3d">
+                            <button
+                                type="button"
+                                class="tab-btn active"
+                                id="tab-3d"
+                                data-i18n="tab3d"
+                            >
                                 3D View
                             </button>
-                            <button type="button" class="tab-btn" id="tab-table">JSON Table</button>
-                            <button type="button" class="tab-btn" id="tab-raw">Raw JSON</button>
+                            <button
+                                type="button"
+                                class="tab-btn"
+                                id="tab-table"
+                                data-i18n="tabTable"
+                            >
+                                JSON Table
+                            </button>
+                            <button type="button" class="tab-btn" id="tab-raw" data-i18n="tabRaw">
+                                Raw JSON
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -164,7 +202,7 @@
                     <div id="three-view" class="view-section active">
                         <div id="three-placeholder" class="empty-state">
                             <div class="empty-icon">🧊</div>
-                            <p>
+                            <p data-i18n="empty3d">
                                 No 3D model yet. Submit a prompt in the chat window to view the 3D
                                 model.
                             </p>
@@ -178,7 +216,7 @@
                                         type="button"
                                         id="reset-cam-btn"
                                         class="secondary-btn"
-                                        title="Reset View"
+                                        data-i18n="resetView"
                                     >
                                         Reset View
                                     </button>
@@ -186,9 +224,9 @@
                                         type="button"
                                         id="toggle-wireframe-btn"
                                         class="secondary-btn"
-                                        title="Toggle Edges"
+                                        data-i18n="hideEdges"
                                     >
-                                        Toggle Edges
+                                        Hide Edges
                                     </button>
                                 </div>
                             </div>
@@ -199,21 +237,23 @@
                     <div id="json-table-view" class="view-section hidden">
                         <div id="table-placeholder" class="empty-state">
                             <div class="empty-icon">📊</div>
-                            <p>
+                            <p data-i18n="emptyTable">
                                 No response yet. Submit a prompt in the chat window to view the
                                 result as a JSON table.
                             </p>
                         </div>
                         <div id="table-results" class="table-container hidden">
                             <div class="table-section">
-                                <h3 class="section-title">Response JSON Table</h3>
+                                <h3 class="section-title" data-i18n="tableTitle">
+                                    Response JSON Table
+                                </h3>
                                 <div class="table-wrapper">
                                     <table id="json-table" class="json-table">
                                         <thead>
                                             <tr>
-                                                <th>Key</th>
-                                                <th>Type</th>
-                                                <th>Value</th>
+                                                <th data-i18n="columnKey">Key</th>
+                                                <th data-i18n="columnType">Type</th>
+                                                <th data-i18n="columnValue">Value</th>
                                             </tr>
                                         </thead>
                                         <tbody id="json-table-body"></tbody>
@@ -226,17 +266,29 @@
                     <!-- Raw JSON View -->
                     <div id="json-raw-view" class="view-section hidden">
                         <div class="raw-actions">
-                            <span id="json-status-indicator" class="status-indicator">Ready</span>
-                            <button type="button" id="copy-json-btn" class="secondary-btn">
+                            <span
+                                id="json-status-indicator"
+                                class="status-indicator"
+                                data-i18n="ready"
+                                >Ready</span
+                            >
+                            <button
+                                type="button"
+                                id="copy-json-btn"
+                                class="secondary-btn"
+                                data-i18n="copyJson"
+                            >
                                 Copy JSON
                             </button>
                         </div>
-                        <pre><code id="json-raw-code">// Response JSON will appear here</code></pre>
+                        <pre
+                            dir="ltr"
+                        ><code id="json-raw-code">// Response JSON will appear here</code></pre>
                     </div>
                 </div>
             </section>
         </main>
 
-        <script src="/static/app.js?v=4"></script>
+        <script src="/static/app.js?v=5"></script>
     </body>
 </html>

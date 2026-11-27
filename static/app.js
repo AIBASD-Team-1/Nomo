@@ -2,6 +2,107 @@
 
 const COPY_FEEDBACK_DURATION_MS = 1800;
 const THEME_STORAGE_KEY = "nomo-theme";
+const LANGUAGE_STORAGE_KEY = "nomo-language";
+
+const TRANSLATIONS = {
+    en: {
+        languageToggle: "العربية",
+        subtitle: "Enter prompts in the chat window and see the result as JSON",
+        chatTitle: "Chat Window",
+        assistantName: "Nomo AI",
+        userName: "You",
+        greeting: "Hello! Enter your prompt below to see the result as JSON.",
+        tryLabel: "Try:",
+        tableChip: "Kitchen table 160 × 90 cm",
+        tablePrompt: "Kitchen table 160 x 90 cm for six people, four legs",
+        boxChip: "Box 100 mm",
+        boxPrompt: "Box 100 x 100 x 100 mm",
+        placeholder: "Enter your prompt here...",
+        send: "Send",
+        loading: "Thinking…",
+        outputTitle: "Output Panel",
+        tab3d: "3D View",
+        tabTable: "JSON Table",
+        tabRaw: "Raw JSON",
+        empty3d: "No 3D model yet. Submit a prompt in the chat window to view the 3D model.",
+        emptyTable:
+            "No response yet. Submit a prompt in the chat window to view the result as a JSON table.",
+        tableTitle: "Response JSON Table",
+        columnKey: "Key",
+        columnType: "Type",
+        columnValue: "Value",
+        ready: "Ready",
+        received: "✓ Response received",
+        receivedError: "⚠ Response with error",
+        copyJson: "Copy JSON",
+        copied: "✓ Copied",
+        emptyPrompt: "⚠ Please describe your design first.",
+        serverError: "⚠ Could not create the model. Please try again.",
+        resetView: "Reset View",
+        hideEdges: "Hide Edges",
+        showEdges: "Show Edges",
+        partCount: "Parts:",
+        freeGeometry: "Free geometry",
+        freeGeometryHint: "Allow LLM to generate free geometry when no matching template exists",
+        chatBadge: "Chat",
+        toLight: "Switch to light mode",
+        toDark: "Switch to dark mode",
+        downloadStl: "Download STL",
+        downloadStep: "Download STEP",
+    },
+    ar: {
+        languageToggle: "English",
+        subtitle: "اكتب وصف التصميم في نافذة المحادثة وشاهد النتيجة",
+        chatTitle: "نافذة المحادثة",
+        assistantName: "مساعد نومو",
+        userName: "أنت",
+        greeting: "مرحبًا! اكتب وصف التصميم أدناه.",
+        tryLabel: "جرّب:",
+        tableChip: "طاولة مطبخ ١٦٠ × ٩٠ سم",
+        tablePrompt: "طاولة مطبخ ١٦٠ × ٩٠ سم لستة أشخاص بأربع أرجل",
+        boxChip: "صندوق ١٠٠ مم",
+        boxPrompt: "صندوق ١٠٠ × ١٠٠ × ١٠٠ مم",
+        placeholder: "اكتب وصفك هنا...",
+        send: "إرسال",
+        loading: "جارٍ الإنشاء…",
+        outputTitle: "لوحة النتائج",
+        tab3d: "عرض ثلاثي الأبعاد",
+        tabTable: "جدول JSON",
+        tabRaw: "JSON خام",
+        empty3d: "لا يوجد نموذج بعد. أرسل وصفًا لعرض النموذج.",
+        emptyTable: "لا توجد نتيجة بعد. أرسل وصفًا لعرض النتيجة.",
+        tableTitle: "جدول النتيجة",
+        columnKey: "المفتاح",
+        columnType: "النوع",
+        columnValue: "القيمة",
+        ready: "جاهز",
+        received: "✓ تم استلام النتيجة",
+        receivedError: "⚠ النتيجة تحتوي على خطأ",
+        copyJson: "نسخ JSON",
+        copied: "✓ تم النسخ",
+        emptyPrompt: "⚠ يرجى كتابة وصف التصميم أولًا.",
+        serverError: "⚠ تعذّر إنشاء النموذج. حاول مرة أخرى.",
+        resetView: "إعادة العرض",
+        hideEdges: "إخفاء الحواف",
+        showEdges: "إظهار الحواف",
+        partCount: "عدد القطع:",
+        freeGeometry: "هندسة حرة",
+        freeGeometryHint: "السماح بإنشاء هندسة حرة عند عدم وجود قالب مناسب",
+        chatBadge: "محادثة",
+        toLight: "التبديل إلى الوضع الفاتح",
+        toDark: "التبديل إلى الوضع الداكن",
+        downloadStl: "تنزيل STL",
+        downloadStep: "تنزيل STEP",
+    },
+};
+
+function currentLanguage() {
+    return document.documentElement.lang === "ar" ? "ar" : "en";
+}
+
+function translate(key) {
+    return TRANSLATIONS[currentLanguage()][key];
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     // Three.js CAD 3D View Renderer state
@@ -26,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function applyTheme(theme) {
         document.documentElement.setAttribute("data-theme", theme);
-        const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+        const label = translate(theme === "dark" ? "toLight" : "toDark");
         themeToggle.setAttribute("aria-label", label);
         themeToggle.title = label;
         if (typeof updateThreeTheme === "function") {
@@ -44,6 +145,39 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem(THEME_STORAGE_KEY, next);
         } catch (e) {
             // Storage unavailable; theme just won't persist
+        }
+    });
+
+    // Language switch (English / Arabic)
+    const languageToggle = document.getElementById("language-toggle");
+
+    function applyLanguage(language) {
+        document.documentElement.lang = language;
+        document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+            element.textContent = translate(element.dataset.i18n);
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+            element.placeholder = translate(element.dataset.i18nPlaceholder);
+        });
+        document.querySelectorAll("[data-i18n-title]").forEach((element) => {
+            element.title = translate(element.dataset.i18nTitle);
+        });
+        languageToggle.lang = language === "ar" ? "en" : "ar";
+        document.querySelector('[data-i18n="tableChip"]').dataset.prompt = translate("tablePrompt");
+        document.querySelector('[data-i18n="boxChip"]').dataset.prompt = translate("boxPrompt");
+        applyTheme(document.documentElement.getAttribute("data-theme"));
+    }
+
+    applyLanguage(currentLanguage());
+
+    languageToggle.addEventListener("click", () => {
+        const nextLanguage = currentLanguage() === "ar" ? "en" : "ar";
+        applyLanguage(nextLanguage);
+        try {
+            localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+        } catch (e) {
+            // Storage unavailable; language just won't persist
         }
     });
 
@@ -126,10 +260,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!currentJsonResponse) return;
         const jsonText = JSON.stringify(currentJsonResponse, null, 2);
         navigator.clipboard.writeText(jsonText).then(() => {
-            const originalText = copyJsonBtn.textContent;
-            copyJsonBtn.textContent = "Copied!";
+            copyJsonBtn.textContent = translate("copied");
             setTimeout(() => {
-                copyJsonBtn.textContent = originalText;
+                copyJsonBtn.textContent = translate("copyJson");
             }, COPY_FEEDBACK_DURATION_MS);
         });
     });
@@ -157,7 +290,11 @@ document.addEventListener("DOMContentLoaded", () => {
     chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const promptText = promptInput.value.trim();
-        if (!promptText) return;
+        if (!promptText) {
+            appendMessage("assistant", translate("emptyPrompt"), "error-message");
+            promptInput.focus();
+            return;
+        }
 
         const previousConversation = conversationHistory.slice();
         conversationHistory.push({ role: "user", content: promptText });
@@ -185,8 +322,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
             currentJsonResponse = data;
 
-            const replyText = data.reply || data.message || "Prompt received.";
-            appendMessage("assistant", replyText);
+            const isError = data.status === "error";
+            const replyText = isError
+                ? translate("serverError")
+                : data.reply || data.message || "Prompt received.";
+            appendMessage("assistant", replyText, isError ? "error-message" : "");
             conversationHistory.push({ role: "assistant", content: replyText });
             if (data.status === "ok" && Array.isArray(data.result)) {
                 currentModel = data.result;
@@ -196,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
             render3DModel(data);
         } catch (error) {
             console.error("Error submitting prompt:", error);
-            appendMessage("assistant", `Error: Could not connect to server. (${error.message})`);
+            appendMessage("assistant", translate("serverError"), "error-message");
         } finally {
             setLoading(false);
         }
@@ -206,10 +346,10 @@ document.addEventListener("DOMContentLoaded", () => {
         sendBtn.disabled = isLoading;
         promptInput.disabled = isLoading;
         if (isLoading) {
-            sendBtn.innerHTML = `<span>Thinking...</span>`;
+            sendBtn.innerHTML = `<span class="spinner" aria-hidden="true"></span><span>${translate("loading")}</span>`;
         } else {
             sendBtn.innerHTML = `
-                <span>Send</span>
+                <span data-i18n="send">${translate("send")}</span>
                 <svg class="send-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                 </svg>
@@ -218,13 +358,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function appendMessage(sender, text) {
+    function appendMessage(sender, text, extraClass = "") {
         const msgDiv = document.createElement("div");
-        msgDiv.className = `message ${sender}-message`;
+        msgDiv.className = `message ${sender}-message ${extraClass}`;
+        msgDiv.dir = "auto";
 
         const senderDiv = document.createElement("div");
         senderDiv.className = "message-sender";
-        senderDiv.textContent = sender === "user" ? "You" : "Nomo AI";
+        senderDiv.textContent = translate(sender === "user" ? "userName" : "assistantName");
         msgDiv.appendChild(senderDiv);
 
         const contentDiv = document.createElement("div");
@@ -248,11 +389,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (type === "object") {
             const formatted = escapeHtml(JSON.stringify(val, null, 2));
-            return `<pre class="table-code-block">${formatted}</pre>`;
+            return `<pre class="table-code-block" dir="ltr">${formatted}</pre>`;
         }
         if (type === "array") {
             const formatted = escapeHtml(JSON.stringify(val, null, 2));
-            return `<span class="table-badge">${val.length} items</span> <pre class="table-code-block with-margin">${formatted}</pre>`;
+            return `<span class="table-badge">${val.length} items</span> <pre class="table-code-block with-margin" dir="ltr">${formatted}</pre>`;
         }
         if (key === "status") {
             const badgeClass = val === "success" ? "success" : "warning";
@@ -298,7 +439,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         jsonRawCode.textContent = JSON.stringify(data, null, 2);
-        jsonStatusIndicator.textContent = `Response received (${new Date().toLocaleTimeString()})`;
+        const statusKey = data.status === "error" ? "receivedError" : "received";
+        jsonStatusIndicator.dataset.i18n = statusKey;
+        jsonStatusIndicator.textContent = translate(statusKey);
         updateDownloadButtons(data);
     }
 
@@ -469,7 +612,9 @@ document.addEventListener("DOMContentLoaded", () => {
             edgesList.forEach((edgeMesh) => {
                 edgeMesh.visible = showEdges;
             });
-            toggleWireframeBtn.textContent = showEdges ? "Hide Edges" : "Show Edges";
+            const edgesLabelKey = showEdges ? "hideEdges" : "showEdges";
+            toggleWireframeBtn.dataset.i18n = edgesLabelKey;
+            toggleWireframeBtn.textContent = translate(edgesLabelKey);
         });
     }
 
@@ -610,6 +755,13 @@ document.addEventListener("DOMContentLoaded", () => {
         return geom;
     }
 
+    function formatPartCount(count) {
+        if (currentLanguage() === "ar") {
+            return `${translate("partCount")} ${count.toLocaleString("ar-SA")}`;
+        }
+        return `${count} part${count === 1 ? "" : "s"}`;
+    }
+
     function frameAndShowScene(partCountText) {
         cadGroup.updateMatrixWorld(true);
         const bbox = new THREE.Box3().setFromObject(cadGroup);
@@ -690,7 +842,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             cadGroup.add(mesh);
             const count = solidCount || 1;
-            frameAndShowScene(`${count} free geometry part${count === 1 ? "" : "s"}`);
+            frameAndShowScene(formatPartCount(count));
         } catch (err) {
             console.warn("Could not load free geometry STL preview:", err);
         }
@@ -788,7 +940,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cadGroup.add(mesh);
         });
 
-        frameAndShowScene(`${instances.length} part${instances.length === 1 ? "" : "s"}`);
+        frameAndShowScene(formatPartCount(instances.length));
     }
 
     // Initialize Three.js on page load

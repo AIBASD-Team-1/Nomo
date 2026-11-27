@@ -30,6 +30,8 @@ def save_response(text: str, output_path: str) -> None:
 
 
 def main():
+    # Arabic replies must print on Windows consoles that default to cp1252
+    sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Nomo CLI - Design Description to LLM")
     parser.add_argument(
         "prompt", nargs="?", help="User prompt / description (optional)"

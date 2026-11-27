@@ -494,6 +494,8 @@ Build the product the user describes ONLY from the templates in this catalog:
 
 Conventions:
 - All dimensions in mm. Z points up. Parts stand on the XY plane (z = 0) by default.
+- Write `reply` in the language of the user's request (e.g. Arabic for an Arabic request). Read Eastern
+  Arabic digits (٠–٩) like Western digits (0–9). Ids, template ids and parameter names stay English.
 - Each instance is rotated about its template origin by `rotation` (degrees, about fixed X, then Y,
   then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every parameter value must be a number within the template's min/max. Omitted parameters use the default.
@@ -523,6 +525,8 @@ Build the product the user describes. First try to use the templates in this cat
 
 Conventions:
 - All dimensions in mm. Z points up. Parts stand on the XY plane (z = 0) by default.
+- Write `reply` in the language of the user's request (e.g. Arabic for an Arabic request). Read Eastern
+  Arabic digits (٠–٩) like Western digits (0–9). Ids, template ids and parameter names stay English.
 - Each template instance is rotated about its template origin by `rotation` (degrees, about fixed X,
   then Y, then Z, right-hand rule), then moved so its origin sits at `position`.
 - Every template parameter value must be a number within the template's min/max. Omitted parameters
